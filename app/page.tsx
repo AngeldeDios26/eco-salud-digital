@@ -248,7 +248,7 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-[#DCE9E6] bg-white px-6 py-8 text-center text-sm text-slate-500">
-        © {new Date().getFullYear()} SALUD DIGITAL.
+        © 2026 SALUD DIGITAL.
         Proyecto tecnológico en desarrollo.
       </footer>
     </main>
