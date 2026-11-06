@@ -141,9 +141,12 @@ export default function Home() {
         <li>✓ Educación y actualización</li>
       </ul>
 
-      <div className="mt-8 rounded-xl bg-[#E9F4F2] px-5 py-4 text-center font-bold text-[#16877F]">
-        Próximamente
-      </div>
+      <a
+  href="/profesionales"
+  className="mt-8 block rounded-xl bg-[#18A69A] px-5 py-4 text-center font-bold text-white transition hover:bg-[#16877F]"
+>
+  Entrar al portal →
+</a>
 
     </article>
 
@@ -170,9 +173,12 @@ export default function Home() {
         <li>✓ Historial personal de salud</li>
       </ul>
 
-      <div className="mt-8 rounded-xl bg-[#FFF0E8] px-5 py-4 text-center font-bold text-[#B66B48]">
-        Próximamente
-      </div>
+      <a
+  href="/pacientes"
+  className="mt-8 block rounded-xl bg-[#18A69A] px-5 py-4 text-center font-bold text-white transition hover:bg-[#16877F]"
+>
+  Entrar al portal →
+</a>
 
     </article>
 
