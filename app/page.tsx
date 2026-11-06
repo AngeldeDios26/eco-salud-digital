@@ -1,69 +1,172 @@
-import Image from "next/image";
+
+const solutions = [
+  {
+    number: "01",
+    icon: "⚕",
+    title: "Profesionales de la salud",
+    description:
+      "Herramientas, recursos y soluciones digitales para médicos y otros profesionales sanitarios.",
+  },
+  {
+    number: "02",
+    icon: "♡",
+    title: "Cartillas digitales",
+    description:
+      "Registros personales de salud, vacunación, consultas y seguimiento de pacientes.",
+  },
+  {
+    number: "03",
+    icon: "▤",
+    title: "Recetario médico",
+    description:
+      "Creación, personalización e impresión de recetas para profesionales.",
+  },
+  {
+    number: "04",
+    icon: "▥",
+    title: "Biblioteca científica",
+    description:
+      "Recursos, documentos y referencias para consulta y actualización.",
+  },
+  {
+    number: "05",
+    icon: "✧",
+    title: "Educación continua",
+    description:
+      "Capacitación y contenidos educativos para profesionales de la salud.",
+  },
+  {
+    number: "06",
+    icon: "⌂",
+    title: "Instituciones",
+    description:
+      "Soluciones tecnológicas para consultorios, clínicas y organizaciones.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="min-h-screen bg-[#F4F8F7] text-[#123C50]">
+      <header className="sticky top-0 z-10 border-b border-[#DCE9E6] bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#18A69A] text-3xl font-bold text-white">
+              +
+            </div>
+            <div>
+              <p className="text-lg font-extrabold tracking-wide">
+                SALUD DIGITAL
+              </p>
+              <p className="text-xs text-slate-500">
+                Tecnología que conecta con tu salud
+              </p>
+            </div>
+          </div>
+
+          <span className="hidden rounded-full bg-[#E9F4F2] px-4 py-2 text-xs font-semibold text-[#16877F] sm:block">
+            Próximamente
+          </span>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-7xl px-6 py-20 md:py-28">
+        <div className="max-w-3xl">
+          <p className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-[#18A69A]">
+            Ecosistema digital de salud
+          </p>
+
+          <h1 className="text-4xl font-extrabold leading-tight md:text-6xl">
+            La tecnología al servicio de quienes cuidan la salud.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mt-7 max-w-2xl text-lg leading-relaxed text-slate-600">
+            Conectamos a profesionales, pacientes e instituciones
+            mediante herramientas digitales accesibles, prácticas
+            y confiables.
+          </p>
+
+          <a
+            href="#soluciones"
+            className="mt-9 inline-block rounded-xl bg-[#123C50] px-7 py-4 font-semibold text-white transition hover:bg-[#20566A]"
+          >
+            Conoce nuestras soluciones →
+          </a>
+        </div>
+      </section>
+
+      <section
+        id="soluciones"
+        className="mx-auto max-w-7xl px-6 pb-24"
+      >
+        <div className="mb-10">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#18A69A]">
+            Nuestro ecosistema
+          </p>
+
+          <h2 className="mt-3 text-3xl font-bold">
+            Soluciones para cada necesidad
+          </h2>
+
+          <p className="mt-3 text-slate-500">
+            Una plataforma modular que crecerá contigo.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {solutions.map((item) => (
+            <article
+              key={item.number}
+              className="rounded-2xl border border-[#DCE9E6] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-4xl text-[#18A69A]">
+                  {item.icon}
+                </span>
+
+                <span className="text-sm font-bold text-slate-300">
+                  {item.number}
+                </span>
+              </div>
+
+              <h3 className="mt-6 text-xl font-bold">
+                {item.title}
+              </h3>
+
+              <p className="mt-3 min-h-20 leading-relaxed text-slate-500">
+                {item.description}
+              </p>
+
+              <p className="mt-6 text-sm font-bold text-[#18A69A]">
+                En desarrollo
+              </p>
+            </article>
+          ))}
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="rounded-3xl bg-[#123C50] px-8 py-12 text-white md:px-14 md:py-16">
+          <p className="font-bold uppercase tracking-widest text-[#8BD8CB]">
+            Nuestra visión
+          </p>
+
+          <h2 className="mt-5 max-w-3xl text-3xl font-bold md:text-4xl">
+            Innovación, conocimiento y tecnología para mejorar
+            la experiencia de salud.
+          </h2>
+
+          <p className="mt-6 max-w-2xl leading-relaxed text-slate-200">
+            Estamos construyendo un ecosistema que acompañe
+            tanto a quienes brindan atención sanitaria como
+            a quienes buscan cuidar su bienestar.
+          </p>
+        </div>
+      </section>
+
+      <footer className="border-t border-[#DCE9E6] bg-white px-6 py-8 text-center text-sm text-slate-500">
+        © {new Date().getFullYear()} SALUD DIGITAL.
+        Proyecto tecnológico en desarrollo.
+      </footer>
+    </main>
   );
 }
