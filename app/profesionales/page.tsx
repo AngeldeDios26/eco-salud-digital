@@ -1,12 +1,14 @@
+import Link from "next/link";
+
 export default function Profesionales() {
   return (
     <main className="min-h-screen bg-[#F4F8F7] text-[#123C50]">
 
       <header className="border-b border-[#DCE9E6] bg-white px-6 py-5">
         <div className="mx-auto max-w-6xl">
-          <a href="/" className="font-bold text-[#18A69A]">
+          <Link href="/" className="font-bold text-[#18A69A]">
             ← Volver al inicio
-          </a>
+          </Link>
           <h1 className="mt-5 text-3xl font-extrabold">
             Portal de Profesionales de la Salud
           </h1>

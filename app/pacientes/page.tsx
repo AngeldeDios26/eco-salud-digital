@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const cartillas = [
   {
     edad: "0 a 9 años",
@@ -37,9 +39,9 @@ export default function Pacientes() {
 
       <header className="border-b border-[#DCE9E6] bg-white px-6 py-5">
         <div className="mx-auto max-w-6xl">
-          <a href="/" className="font-bold text-[#18A69A]">
+          <Link href="/" className="font-bold text-[#18A69A]">
             ← Volver al inicio
-          </a>
+          </Link>
 
           <h1 className="mt-5 text-3xl font-extrabold">
             Portal de Pacientes
