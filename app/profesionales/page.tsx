@@ -21,6 +21,19 @@ export default function Profesionales() {
       <section className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
+          <Link
+            href="/profesionales/consulta"
+            className="rounded-2xl border border-[#DCE9E6] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+          >
+            <h2 className="text-xl font-bold">Consulta Médica</h2>
+            <p className="mt-3 text-sm text-slate-500">
+              Accede a las herramientas para iniciar una consulta médica.
+            </p>
+            <span className="mt-5 inline-block text-sm font-bold text-[#18A69A]">
+              Abrir módulo
+            </span>
+          </Link>
+
           {[
             "Mi perfil profesional",
             "Recetario médico",
