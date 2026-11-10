@@ -8,6 +8,8 @@ type SearchParams = Promise<{
   tipo?: string | string[];
 }>;
 
+type ExaminationMode = "normal" | "editar" | "sin-exploracion";
+
 type HojaClinicaProps = {
   searchParams: SearchParams;
 };
@@ -260,15 +262,46 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
   const tipo = rawTipo === "primera-vez" || rawTipo === "subsecuente" ? rawTipo : null;
   const seleccionValida = modalidad !== null && tipo !== null && !(modalidad === "manual" && tipo === "subsecuente");
   const [sexo, setSexo] = useState("");
-  const [antecedentTexts, setAntecedentTexts] = useState<Record<string, string>>({});
+  const [antecedentTexts, setAntecedentTexts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(antecedents.map((item) => [item.name, "Interrogados y negados"])),
+  );
   const [activeAntecedent, setActiveAntecedent] = useState<string | null>(null);
   const [activeExamination, setActiveExamination] = useState<string | null>(null);
-  const [exploracion, setExploracion] = useState<Record<string, string>>({});
+  const [exploracion, setExploracion] = useState<Record<string, string>>(() =>
+    Object.fromEntries(examTemplates.map((item) => [item.id, item.text])),
+  );
+  const [examinationModes, setExaminationModes] = useState<Record<string, ExaminationMode>>(() =>
+    examTemplates.reduce<Record<string, ExaminationMode>>((modes, item) => {
+      modes[item.id] = "normal";
+      return modes;
+    }, {}),
+  );
   const antecedentFields = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const examinationFields = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const examinationModeButtons = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const aplicarPlantilla = (id: string, texto: string) => {
     setExploracion((actual) => ({ ...actual, [id]: texto }));
+  };
+
+  const seleccionarModoExploracion = (
+    id: string,
+    modo: ExaminationMode,
+  ) => {
+    const modoActual = examinationModes[id];
+    if (modoActual === modo) return;
+
+    setExaminationModes((actual) => ({ ...actual, [id]: modo }));
+    const plantilla = examTemplates.find((item) => item.id === id)?.text;
+    if (modo === "sin-exploracion") {
+      aplicarPlantilla(id, "");
+    } else if (modo === "normal" || modoActual === "sin-exploracion") {
+      if (plantilla) aplicarPlantilla(id, plantilla);
+    }
+
+    if (modo === "editar") {
+      requestAnimationFrame(() => examinationFields.current[id]?.focus());
+    }
   };
 
   const toggleAntecedent = (id: string, disabled = false) => {
@@ -287,7 +320,7 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
       return;
     }
     setActiveExamination(id);
-    requestAnimationFrame(() => examinationFields.current[id]?.focus());
+    requestAnimationFrame(() => examinationModeButtons.current[id]?.focus());
   };
 
   return (
@@ -428,7 +461,7 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
             ))}
           </div>
           <p className="mt-4 text-sm text-slate-500">
-            Las leyendas son indicaciones editables. No se agregan al campo hasta que el profesional escriba; no se insertan negaciones automáticamente.
+            Cada apartado inicia con “Interrogados y negados”; el texto es editable y permanece al cerrar la barra.
           </p>
         </section>
 
@@ -440,7 +473,7 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
         </section>
 
         <section className={sectionClassName}>
-          <SectionHeading number="05" note="Los textos normales son opcionales y solo se insertan al seleccionarlos.">
+          <SectionHeading number="05" note="Cada apartado inicia con la plantilla normal aprobada; puedes editarla o indicar que no se exploró.">
             Exploración física
           </SectionHeading>
           <div className="space-y-3">
@@ -452,6 +485,37 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
                 expanded={activeExamination === item.id}
                 onToggle={() => toggleExamination(item.id)}
               >
+                <div
+                  role="group"
+                  aria-label={"Modo de exploración: " + item.title}
+                  className="mb-4 flex flex-wrap gap-2"
+                >
+                  {(
+                    [
+                      ["normal", "NORMAL"],
+                      ["editar", "EDITAR"],
+                      ["sin-exploracion", "SIN EXPLORACIÓN"],
+                    ] as const
+                  ).map(([mode, label], index) => (
+                    <button
+                      key={mode}
+                      ref={index === 0 ? (button) => {
+                        examinationModeButtons.current[item.id] = button;
+                      } : undefined}
+                      type="button"
+                      aria-pressed={examinationModes[item.id] === mode}
+                      onClick={() => seleccionarModoExploracion(item.id, mode)}
+                      className={
+                        "rounded-lg border px-4 py-2 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18A69A] " +
+                        (examinationModes[item.id] === mode
+                          ? "border-[#18A69A] bg-[#E9F4F2] text-[#123C50]"
+                          : "border-[#DCE9E6] text-slate-600 hover:bg-[#F4F8F7]")
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <label
                   htmlFor={"exploracion-" + item.id}
                   className="block text-sm font-semibold text-[#123C50]"
@@ -466,26 +530,11 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
                     rows={4}
                     value={exploracion[item.id] ?? ""}
                     onChange={(event) => aplicarPlantilla(item.id, event.target.value)}
-                    placeholder="Sin información. Escribe solo los hallazgos explorados."
+                    readOnly={examinationModes[item.id] === "normal"}
+                    disabled={examinationModes[item.id] === "sin-exploracion"}
                     className={inputClassName + " resize-y"}
                   />
                 </label>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => aplicarPlantilla(item.id, item.text)}
-                    className="rounded-lg border border-[#18A69A] px-4 py-2 text-sm font-bold text-[#123C50] transition hover:bg-[#E9F4F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18A69A]"
-                  >
-                    Usar plantilla normal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => aplicarPlantilla(item.id, "")}
-                    className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18A69A]"
-                  >
-                    Dejar en blanco
-                  </button>
-                </div>
               </AccordionBar>
             ))}
             <AccordionBar
@@ -515,7 +564,7 @@ function HojaClinicaContent({ searchParams }: HojaClinicaProps) {
             </AccordionBar>
           </div>
           <p className="mt-4 text-sm text-slate-500">
-            Selecciona una plantilla normal únicamente si comprobaste esos hallazgos. Cada texto puede editarse o dejarse completamente en blanco.
+            La selección y el texto permanecen al cerrar la barra. La selección de “Sin exploración” deja vacío el apartado.
           </p>
         </section>
 
