@@ -48,7 +48,7 @@ export default function Pacientes() {
           </h1>
 
           <p className="mt-2 text-slate-500">
-            Tu información de salud organizada en un solo lugar.
+            Genera un QR temporal para compartir los datos que elijas con tu médico.
           </p>
         </div>
       </header>
@@ -57,12 +57,22 @@ export default function Pacientes() {
 
         <div className="mb-10">
           <h2 className="text-2xl font-bold">
-            Selecciona tu cartilla digital
+            Cartillas digitales en desarrollo
           </h2>
 
           <p className="mt-3 text-slate-500">
-            Espacios digitales organizados por grupos de edad.
+            Estamos preparando estos espacios de seguimiento por etapa de vida.
           </p>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-[#B9DED8] bg-[#E9F4F2] p-6">
+          <h2 className="text-xl font-extrabold">Comparte tus datos con tu médico</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+            Prepara un QR temporal con los datos que elijas. El código vence en cinco minutos y solo puede leerse una vez.
+          </p>
+          <Link href="/pacientes/qr" className="mt-4 inline-flex rounded-xl bg-[#18A69A] px-5 py-3 font-bold text-white transition hover:bg-[#138C82]">
+            Preparar datos y generar QR temporal
+          </Link>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
