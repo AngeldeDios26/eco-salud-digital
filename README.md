@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Eco Salud Digital
 
-## Getting Started
+Prototipo web de herramientas clínicas para profesionales de la salud y un portal de pacientes para compartir información mediante un código QR temporal.
 
-First, run the development server:
+> **Demostración:** no utilizar con pacientes reales. No es un producto oficial del IMSS ni de la Secretaría de Salud.
 
-```bash
+## Iniciar en local
+
+Requisitos: Node.js y npm.
+
+```powershell
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Para revisar el código antes de publicar cambios:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run lint
+npx tsc --noEmit --incremental false
+npm run build
+```
 
-## Learn More
+## Secciones
 
-To learn more about Next.js, take a look at the following resources:
+- **Inicio**: accesos a consulta, herramientas, receta, perfil y biblioteca.
+- **Hoja de consulta** (`/profesionales/consulta/hoja-clinica`): captura editable, diagnóstico CIE-10, exploración, signos vitales, indicaciones y preparación de receta en la sesión actual.
+- **Herramientas** (`/profesionales`): calculadoras clínicas, consulta de grupos terapéuticos IMSS y recursos de paraclínicos y escalas.
+- **Mi Biblioteca** (`/profesionales/biblioteca`): guías, fuentes externas, libros y accesos a plataformas.
+- **Mi perfil** (`/profesionales/perfil`): datos profesionales para completar la hoja clínica.
+- **Portal de pacientes** (`/pacientes`): formulario para generar un QR temporal con los datos elegidos por el paciente.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## QR temporal del paciente
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+La persona elige qué información compartir y debe marcar una autorización explícita antes de generar el código. El QR contiene un token aleatorio, vence a los cinco minutos, puede consumirse una sola vez y puede cancelarse mientras siga vigente. Al leerse, la hoja clínica muestra los datos importados para que el médico los revise y edite.
 
-## Deploy on Vercel
+La implementación actual conserva las transferencias temporalmente en memoria del proceso. Un reinicio las invalida y varias instancias de servidor no comparten el mismo almacén; por eso este flujo sigue siendo solo para demostración.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Límites actuales
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- No se crean expedientes médicos permanentes ni se integra SIMF.
+- El perfil de demostración se conserva en la sesión del navegador; la integración opcional con Supabase requiere autenticación configurada.
+- El buscador farmacológico de la hoja tiene una ficha IMSS integrada como ejemplo. Falta estructurar el catálogo institucional completo.
+- Favoritos y recursos recientes se guardan localmente en el navegador.
+- No ingresar datos reales de pacientes en este prototipo.
+
+## Variables opcionales
+
+El perfil puede leer una sesión profesional de Supabase si se configuran estas variables en el entorno local o del servicio de despliegue:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+No se necesitan para iniciar la demostración local. Los archivos `.env*` permanecen fuera del repositorio.
+
+## Rutas principales
+
+| Página | Ruta |
+| --- | --- |
+| Inicio | `/` |
+| Herramientas | `/profesionales` |
+| Hoja de consulta | `/profesionales/consulta/hoja-clinica` |
+| Biblioteca | `/profesionales/biblioteca` |
+| Perfil | `/profesionales/perfil` |
+| Portal de pacientes | `/pacientes` |
+| Generar QR | `/pacientes/qr` |

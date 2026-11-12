@@ -10,7 +10,15 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "La solicitud no tiene un formato válido." }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
-  const payload = validatePatientQrData(body);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return Response.json({ error: "La solicitud no tiene un formato válido." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  const submission = body as Record<string, unknown>;
+  if (submission.consent !== true) {
+    return Response.json({ error: "Se requiere autorización para compartir los datos seleccionados." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const payload = validatePatientQrData(submission.data);
   if (!payload) return Response.json({ error: "Revisa los datos requeridos y sus formatos." }, { status: 400, headers: { "Cache-Control": "no-store" } });
 
   const transfer = createTemporaryTransfer(payload);
