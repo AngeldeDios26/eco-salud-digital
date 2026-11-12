@@ -29,7 +29,7 @@ npm run build
 - **Hoja de consulta** (`/profesionales/consulta/hoja-clinica`): captura editable, diagnóstico CIE-10, exploración, signos vitales, indicaciones y preparación de receta en la sesión actual.
 - **Herramientas** (`/profesionales`): calculadoras clínicas, consulta de grupos terapéuticos IMSS y recursos de paraclínicos y escalas.
 - **Mi Biblioteca** (`/profesionales/biblioteca`): guías, fuentes externas, libros y accesos a plataformas.
-- **Mi perfil** (`/profesionales/perfil`): datos profesionales para completar la hoja clínica.
+- **Mi perfil** (`/profesionales/perfil`): datos profesionales guardados localmente en el navegador para completar futuras hojas clínicas.
 - **Portal de pacientes** (`/pacientes`): formulario para generar un QR temporal con los datos elegidos por el paciente.
 
 ## QR temporal del paciente
@@ -41,7 +41,7 @@ La implementación actual conserva las transferencias temporalmente en memoria d
 ## Límites actuales
 
 - No se crean expedientes médicos permanentes ni se integra SIMF.
-- El perfil de demostración se conserva en la sesión del navegador; la integración opcional con Supabase requiere autenticación configurada.
+- El perfil profesional se conserva en el almacenamiento local del navegador; la integración opcional con Supabase requiere autenticación configurada.
 - El buscador farmacológico de la hoja tiene una ficha IMSS integrada como ejemplo. Falta estructurar el catálogo institucional completo.
 - Favoritos y recursos recientes se guardan localmente en el navegador.
 - No ingresar datos reales de pacientes en este prototipo.

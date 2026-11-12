@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../../../../lib/supabase/client";
-import { readSessionProfessionalProfile } from "../../../../lib/professional-profile";
+import { readProfessionalProfile } from "../../../../lib/professional-profile";
 import { favoriteCalculatorsChangedEvent, readFavoriteCalculators, type FavoriteCalculator } from "../../../../lib/favorite-calculators";
 import cie10Data from "../../../../data/cie10.json";
 
@@ -254,15 +254,15 @@ export default function HojaClinica() {
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
-      const sessionProfile = readSessionProfessionalProfile();
-      if (!sessionProfile) return;
+      const localProfile = readProfessionalProfile();
+      if (!localProfile) return;
       setProfessionalDetails((current) => ({
-        nombre: current.nombre || sessionProfile.nombre,
-        matricula: current.matricula || sessionProfile.matricula,
-        cedula: current.cedula || sessionProfile.cedula,
-        unidad: current.unidad || sessionProfile.unidad,
+        nombre: current.nombre || localProfile.nombre,
+        matricula: current.matricula || localProfile.matricula,
+        cedula: current.cedula || localProfile.cedula,
+        unidad: current.unidad || localProfile.unidad,
       }));
-      setProfessionalProfileStatus("Se cargó el perfil guardado en esta sesión; puedes ajustar los datos para esta consulta.");
+      setProfessionalProfileStatus("Se cargó el perfil guardado en este navegador; puedes ajustar los datos para esta consulta.");
     });
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return;
 

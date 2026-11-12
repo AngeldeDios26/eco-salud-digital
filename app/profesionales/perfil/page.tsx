@@ -6,8 +6,9 @@ import { createClient } from "../../../lib/supabase/client";
 import {
   emptyProfessionalProfile,
   normalizeProfessionalProfile,
-  professionalProfileStorageKey,
-  readSessionProfessionalProfile,
+  clearProfessionalProfile,
+  readProfessionalProfile,
+  saveProfessionalProfile,
   type ProfessionalProfile,
 } from "../../../lib/professional-profile";
 
@@ -28,10 +29,10 @@ export default function ProfessionalProfilePage() {
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
-      const saved = readSessionProfessionalProfile();
+      const saved = readProfessionalProfile();
       if (saved) {
         setProfile(saved);
-        setStatus("Se cargó el perfil guardado en esta sesión.");
+        setStatus("Se cargó el perfil guardado en este navegador.");
       } else if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
         setStatus("No hay una sesión profesional conectada. Puedes completar los datos para esta demostración.");
       }
@@ -57,7 +58,7 @@ export default function ProfessionalProfilePage() {
         }));
         setStatus("Se cargaron los datos disponibles del perfil profesional.");
       }).catch(() => {
-        if (active && !readSessionProfessionalProfile()) setStatus("No se pudo consultar el perfil. Puedes completar los datos para esta demostración.");
+        if (active && !readProfessionalProfile()) setStatus("No se pudo consultar el perfil. Puedes completar los datos para esta demostración.");
       });
     }
 
@@ -72,18 +73,21 @@ export default function ProfessionalProfilePage() {
       return;
     }
     try {
-      window.sessionStorage.setItem(professionalProfileStorageKey, JSON.stringify(normalized));
+      if (!saveProfessionalProfile(normalized)) throw new Error("El almacenamiento local no está disponible.");
       setProfile(normalized);
-      setStatus("Perfil guardado solo en esta sesión. Se usará para completar los datos del médico en la consulta.");
+      setStatus("Perfil guardado en este navegador. Se usará para completar los datos del médico en futuras consultas.");
     } catch {
-      setStatus("No se pudo guardar el perfil en esta sesión. Puedes completar los datos manualmente en la consulta.");
+      setStatus("No se pudo guardar el perfil en este navegador. Puedes completar los datos manualmente en la consulta.");
     }
   };
 
   const clear = () => {
-    try { window.sessionStorage.removeItem(professionalProfileStorageKey); } catch { /* The form still clears in memory. */ }
+    if (!clearProfessionalProfile()) {
+      setStatus("No se pudo borrar el perfil del navegador. Puedes borrarlo desde la configuración del navegador.");
+      return;
+    }
     setProfile(emptyProfessionalProfile);
-    setStatus("Se borró el perfil de esta sesión.");
+    setStatus("Se borró el perfil guardado en este navegador.");
   };
 
   return (
@@ -93,7 +97,7 @@ export default function ProfessionalProfilePage() {
         <p className="mt-7 text-sm font-bold uppercase tracking-widest text-[#18A69A]">Herramientas para profesionales</p>
         <h1 className="mt-2 text-3xl font-extrabold">Mi perfil</h1>
         <p className="mt-2 text-slate-600">Completa los datos que aparecen en la hoja clínica. Si hay una sesión conectada, se cargan los valores disponibles del perfil profesional.</p>
-        <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">Demostración: estos datos se conservan solo en esta pestaña y no se envían a un expediente médico.</p>
+        <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">Los datos profesionales se guardan solo en el almacenamiento local de este navegador para completar futuras consultas. No se envían a un expediente médico y puedes borrarlos desde aquí.</p>
 
         <form onSubmit={save} className="mt-6 space-y-5 rounded-2xl border border-[#DCE9E6] bg-white p-6 shadow-sm">
           {fields.map(({ key, label }) => (
@@ -103,7 +107,7 @@ export default function ProfessionalProfilePage() {
             </label>
           ))}
           <div className="flex flex-wrap gap-3 pt-2">
-            <button type="submit" className="rounded-xl bg-[#18A69A] px-5 py-3 font-bold text-white hover:bg-[#16877F]">Guardar en esta sesión</button>
+            <button type="submit" className="rounded-xl bg-[#18A69A] px-5 py-3 font-bold text-white hover:bg-[#16877F]">Guardar perfil</button>
             <button type="button" onClick={clear} className="rounded-xl border border-[#DCE9E6] px-5 py-3 font-bold">Borrar perfil</button>
             <Link href="/profesionales/consulta/hoja-clinica" className="rounded-xl border border-[#18A69A] px-5 py-3 font-bold text-[#123C50]">Iniciar consulta</Link>
           </div>
