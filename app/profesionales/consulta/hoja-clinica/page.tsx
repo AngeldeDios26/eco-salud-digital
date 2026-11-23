@@ -68,6 +68,12 @@ type PatientTransfer = {
   enfermedadesCronicas: string;
   cirugias: string;
   antecedentesGinecoobstetricos: string;
+  historialTemporal?: {
+    fecha: string;
+    diagnostico: string;
+    tratamiento: string;
+    atendidoPor: string;
+  }[];
 };
 
 type CalcField = {
@@ -1000,6 +1006,9 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(false);
 
   const [qrStatus, setQrStatus] = useState("");
+  const [temporaryPatientHistory, setTemporaryPatientHistory] = useState<
+    NonNullable<PatientTransfer["historialTemporal"]>
+  >([]);
   const [qrScanning, setQrScanning] = useState(false);
   const [manualQrCodeInput, setManualQrCodeInput] = useState("");
   const qrVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -1787,6 +1796,7 @@ export default function App() {
     setActiveSheetTab("paciente");
     setManualQrCodeInput("");
     setQrStatus("");
+    setTemporaryPatientHistory([]);
     setSaveMessage(
       "Consulta finalizada y limpiada. No se almacenó ningún dato del paciente; hoja lista para el siguiente paciente.",
     );
@@ -1871,6 +1881,7 @@ export default function App() {
       setGynecologicText(
         data.antecedentesGinecoobstetricos || defaultGynecologic,
       );
+      setTemporaryPatientHistory(data.historialTemporal ?? []);
       setQrStatus(
         "Datos del paciente precargados con éxito (Presencial / Telemedicina). El código de un solo uso ya fue destruido por seguridad.",
       );
@@ -2100,7 +2111,7 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-dvh w-full overflow-x-hidden bg-[#F6FAF8] text-[#0F2D3D]">
+    <main className="min-h-dvh w-full overflow-x-hidden text-[#0F2D3D]">
       <header className="sticky top-0 z-20 border-b border-[#D6E6E1] bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur print:hidden">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-2">
@@ -2249,6 +2260,32 @@ export default function App() {
                   >
                     {qrStatus}
                   </p>
+                )}
+
+                {temporaryPatientHistory.length > 0 && (
+                  <details className="mb-2 rounded-xl border border-[#0284C7]/40 bg-[#F0F9FF] p-2.5 text-xs print:hidden">
+                    <summary className="cursor-pointer font-extrabold text-[#0F2D3D]">
+                      📋 Historial temporal del paciente ({temporaryPatientHistory.length} consulta{temporaryPatientHistory.length === 1 ? "" : "s"} · visible solo durante esta consulta)
+                    </summary>
+                    <ul className="mt-2 max-h-36 space-y-1.5 overflow-y-auto">
+                      {temporaryPatientHistory.map((item, idx) => (
+                        <li
+                          key={`${item.fecha}-${idx}`}
+                          className="rounded-lg border border-[#BAE6FD] bg-white p-2 text-[11px]"
+                        >
+                          <p className="font-bold text-[#0F2D3D]">
+                            {item.fecha} · {item.diagnostico}
+                          </p>
+                          <p className="text-slate-600">
+                            <strong>Tratamiento:</strong> {item.tratamiento}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            Atendido por: {item.atendidoPor}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
 
                 <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-xl border border-amber-300 bg-amber-50/70 p-2 sm:grid-cols-3 lg:grid-cols-6 print:hidden">
@@ -2588,10 +2625,36 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="rounded-full border border-[#0F2D3D] bg-white px-3 py-1.5 text-xs font-extrabold text-[#0F2D3D] transition hover:bg-[#F6FAF8]"
+                  onClick={() =>
+                    openStandaloneBrowserPrintWindow(
+                      "Archivo Médico - Nota de Consulta",
+                      [
+                        {
+                          heading: "1. Paciente, Signos Vitales y Padecimiento Actual",
+                          content: effectivePatientNote,
+                        },
+                        {
+                          heading: "2. Exploración Física",
+                          content: effectiveExploracion,
+                        },
+                        {
+                          heading: "3. Diagnósticos CIE-10",
+                          content: diagnosesConcatenated,
+                        },
+                        {
+                          heading: "4. Recomendaciones y Tratamiento No Farmacológico",
+                          content: finalIndicationsText,
+                        },
+                        {
+                          heading: "Médico Tratante",
+                          content: doctorFooterConcatenated,
+                        },
+                      ],
+                    )
+                  }
+                  className="rounded-full border border-[#0F2D3D] bg-white px-3 py-1.5 text-xs font-extrabold text-[#0F2D3D] transition hover:bg-[#EAF4F1]"
                 >
-                  Imprimir
+                  📄 Descargar PDF
                 </button>
               </div>
 

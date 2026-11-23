@@ -3,7 +3,7 @@ import { BrandLogo } from "../components/BrandLogo";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#F6FAF8] text-[#0F2D3D]">
+    <main className="min-h-screen text-[#0F2D3D]">
       <header className="sticky top-0 z-10 border-b border-[#D6E6E1] bg-white">
   <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
 

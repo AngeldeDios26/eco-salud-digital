@@ -1,5 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 
+export type PatientHistoryEntry = {
+  fecha: string;
+  diagnostico: string;
+  tratamiento: string;
+  atendidoPor: string;
+};
+
 export type PatientQrData = {
   nombre: string;
   fechaNacimiento: string;
@@ -11,6 +18,7 @@ export type PatientQrData = {
   enfermedadesCronicas: string;
   cirugias: string;
   antecedentesGinecoobstetricos: string;
+  historialTemporal?: PatientHistoryEntry[];
 };
 
 type PendingTransfer = {
@@ -111,5 +119,19 @@ export function validatePatientQrData(value: unknown): PatientQrData | null {
   const antecedentesGinecoobstetricos = text("antecedentesGinecoobstetricos", 2000);
   if ([alergias, medicamentosActuales, enfermedadesCronicas, cirugias, antecedentesGinecoobstetricos].some((field) => field === null)) return null;
 
-  return { nombre, fechaNacimiento, sexo, pesoKg, tallaCm, alergias: alergias!, medicamentosActuales: medicamentosActuales!, enfermedadesCronicas: enfermedadesCronicas!, cirugias: cirugias!, antecedentesGinecoobstetricos: antecedentesGinecoobstetricos! };
+  let historialTemporal: PatientHistoryEntry[] | undefined;
+  if (Array.isArray(record.historialTemporal)) {
+    historialTemporal = record.historialTemporal
+      .slice(0, 20)
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+      .map((item) => ({
+        fecha: typeof item.fecha === "string" ? item.fecha.trim().slice(0, 20) : "",
+        diagnostico: typeof item.diagnostico === "string" ? item.diagnostico.trim().slice(0, 240) : "",
+        tratamiento: typeof item.tratamiento === "string" ? item.tratamiento.trim().slice(0, 400) : "",
+        atendidoPor: typeof item.atendidoPor === "string" ? item.atendidoPor.trim().slice(0, 160) : "",
+      }))
+      .filter((item) => item.fecha || item.diagnostico || item.tratamiento);
+  }
+
+  return { nombre, fechaNacimiento, sexo, pesoKg, tallaCm, alergias: alergias!, medicamentosActuales: medicamentosActuales!, enfermedadesCronicas: enfermedadesCronicas!, cirugias: cirugias!, antecedentesGinecoobstetricos: antecedentesGinecoobstetricos!, ...(historialTemporal?.length ? { historialTemporal } : {}) };
 }

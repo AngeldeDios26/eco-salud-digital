@@ -172,7 +172,7 @@ export default function RecetaMedicaPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F6FAF8] px-4 py-6 text-[#0F2D3D] sm:px-6">
+    <main className="min-h-screen px-4 py-6 text-[#0F2D3D] sm:px-6">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D6E6E1] bg-white p-4 shadow-sm print:hidden">
           <div className="flex items-center gap-3">
