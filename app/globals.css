@@ -17,7 +17,7 @@
 
 body {
   background-color: var(--background);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cpath d='M0 24 Q 40 8, 80 24 T 160 24' fill='none' stroke='%230D9488' stroke-opacity='0.07' stroke-width='2'/%3E%3Cpath d='M0 36 Q 40 20, 80 36 T 160 36' fill='none' stroke='%230F2D3D' stroke-opacity='0.045' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='96' viewBox='0 0 480 96'%3E%3Cpath d='M0 32 Q 30 20 60 32 L 72 32 L 76 36 L 81 12 L 86 44 L 90 32 L 96 27 Q 103 24 110 32 Q 145 44 180 32 Q 202 22 224 32 L 234 32 L 238 35 L 243 14 L 248 42 L 252 32 Q 286 20 320 32 Q 352 44 384 32 L 394 32 L 398 36 L 402 15 L 407 43 L 411 32 Q 445 20 480 32' fill='none' stroke='%230D9488' stroke-opacity='0.085' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M0 70 Q 45 58 90 70 Q 118 78 144 70 L 154 70 L 158 74 L 163 51 L 168 81 L 172 70 Q 210 58 250 70 Q 285 82 320 70 L 330 70 L 334 73 L 338 54 L 343 79 L 347 70 Q 412 58 480 70' fill='none' stroke='%230F2D3D' stroke-opacity='0.055' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: repeat;
   color: var(--foreground);
 }
