@@ -1,8 +1,17 @@
+export const DEFAULT_PATIENT_TEMPLATE =
+  "Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx";
+
+export const DEFAULT_PADECIMIENTO_TEMPLATE =
+  "Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado";
+
 export type ProfessionalProfile = {
   nombre: string;
   matricula: string;
   cedula: string;
   unidad: string;
+  exploracionPersonalizada: string;
+  pacientePlantilla: string;
+  padecimientoPlantilla: string;
 };
 
 export const professionalProfileStorageKey = "eco-salud-professional-profile-v1";
@@ -12,19 +21,25 @@ export const emptyProfessionalProfile: ProfessionalProfile = {
   matricula: "",
   cedula: "",
   unidad: "",
+  exploracionPersonalizada: "",
+  pacientePlantilla: "",
+  padecimientoPlantilla: "",
 };
 
 export function normalizeProfessionalProfile(value: unknown): ProfessionalProfile | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
-  const read = (key: keyof ProfessionalProfile) =>
-    typeof record[key] === "string" ? record[key].trim().slice(0, 180) : "";
+  const read = (key: keyof ProfessionalProfile, maxLength = 180) =>
+    typeof record[key] === "string" ? record[key].trim().slice(0, maxLength) : "";
 
   return {
     nombre: read("nombre"),
     matricula: read("matricula"),
     cedula: read("cedula"),
     unidad: read("unidad"),
+    exploracionPersonalizada: read("exploracionPersonalizada", 4000),
+    pacientePlantilla: read("pacientePlantilla", 1000),
+    padecimientoPlantilla: read("padecimientoPlantilla", 2000),
   };
 }
 

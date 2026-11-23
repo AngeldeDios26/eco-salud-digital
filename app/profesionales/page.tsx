@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -236,7 +236,7 @@ const sections = [
   },
 ];
 
-const inputClass = "mt-2 w-full rounded-xl border border-[#DCE9E6] bg-white px-4 py-3 text-[#123C50] outline-none focus:border-[#18A69A] focus:ring-2 focus:ring-[#18A69A]/15";
+const inputClass = "mt-2 w-full rounded-xl border border-[#D6E6E1] bg-white px-4 py-3 text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15";
 
 function CalculatorWidget({ calculatorId, onCalculated }: { calculatorId: string; onCalculated: () => void }) {
   const definition = clinicalCalculators[calculatorId];
@@ -261,7 +261,7 @@ function CalculatorWidget({ calculatorId, onCalculated }: { calculatorId: string
   });
 
   return (
-    <div className="mt-3 rounded-xl border border-[#DCE9E6] bg-white p-3">
+    <div className="mt-3 rounded-xl border border-[#D6E6E1] bg-white p-3">
       <form className="mt-3 space-y-3" onSubmit={(event) => {
         event.preventDefault();
         if (isComplete && isWithinRange) {
@@ -270,31 +270,31 @@ function CalculatorWidget({ calculatorId, onCalculated }: { calculatorId: string
         }
       }}>
         {definition.fields.map((field: CalculatorField) => field.kind === "checkbox" ? (
-          <label key={field.key} className="flex items-start gap-2 text-sm text-[#123C50]">
-            <input type="checkbox" checked={values[field.key] === "true"} onChange={(event) => updateValue(field.key, String(event.target.checked))} className="mt-1 accent-[#18A69A]" />
+          <label key={field.key} className="flex items-start gap-2 text-sm text-[#0F2D3D]">
+            <input type="checkbox" checked={values[field.key] === "true"} onChange={(event) => updateValue(field.key, String(event.target.checked))} className="mt-1 accent-[#0D9488]" />
             <span>{field.label}</span>
           </label>
         ) : field.kind === "date" ? (
-          <label key={field.key} className="block text-sm font-semibold text-[#123C50]">{field.label}
+          <label key={field.key} className="block text-sm font-semibold text-[#0F2D3D]">{field.label}
             <input className={inputClass} type="date" value={values[field.key]} onChange={(event) => updateValue(field.key, event.target.value)} required />
           </label>
         ) : field.kind === "select" ? (
-          <label key={field.key} className="block text-sm font-semibold text-[#123C50]">{field.label}
+          <label key={field.key} className="block text-sm font-semibold text-[#0F2D3D]">{field.label}
             <select className={inputClass} value={values[field.key]} onChange={(event) => updateValue(field.key, event.target.value)} required>
               <option value="">Selecciona una opción</option>
               {field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
         ) : (
-          <label key={field.key} className="block text-sm font-semibold text-[#123C50]">{field.label}{field.unit ? ` (${field.unit})` : ""}
+          <label key={field.key} className="block text-sm font-semibold text-[#0F2D3D]">{field.label}{field.unit ? ` (${field.unit})` : ""}
             <input className={inputClass} type="number" min={field.min} max={field.max} step={field.step ?? "any"} value={values[field.key]} onChange={(event) => updateValue(field.key, event.target.value)} required />
           </label>
         ))}
-        <button type="submit" disabled={!isComplete || !isWithinRange} className="rounded-lg bg-[#123C50] px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Calcular</button>
+        <button type="submit" disabled={!isComplete || !isWithinRange} className="rounded-lg bg-[#0F2D3D] px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Calcular</button>
         {!isWithinRange && <p role="alert" className="text-sm text-red-700">Revisa los valores: hay uno fuera del intervalo permitido.</p>}
-        {result && <p role="status" className="rounded-lg bg-[#E9F4F2] p-3 font-bold text-[#123C50]">Resultado: {result}</p>}
+        {result && <p role="status" className="rounded-lg bg-[#EAF4F1] p-3 font-bold text-[#0F2D3D]">Resultado: {result}</p>}
         <p className="text-xs leading-relaxed text-slate-600">{definition.note}</p>
-        <a href={definition.source} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-[#16877F] underline underline-offset-2">Fuente: {definition.sourceLabel} ↗</a>
+        <a href={definition.source} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-[#0F766E] underline underline-offset-2">Fuente: {definition.sourceLabel} ↗</a>
       </form>
     </div>
   );
@@ -316,12 +316,12 @@ function Phq2Widget() {
   ];
 
   return (
-    <div className="mt-4 rounded-xl border border-[#DCE9E6] bg-white p-4">
-      <h3 className="font-bold text-[#123C50]">PHQ-2 · últimas 2 semanas</h3>
+    <div className="mt-4 rounded-xl border border-[#D6E6E1] bg-white p-4">
+      <h3 className="font-bold text-[#0F2D3D]">PHQ-2 · últimas 2 semanas</h3>
       <p className="mt-1 text-sm text-slate-600">¿Con qué frecuencia le han afectado estos problemas?</p>
       <div className="mt-3 space-y-4">
         {questions.map((question, index) => (
-          <label key={question} className="block text-sm font-semibold text-[#123C50]">
+          <label key={question} className="block text-sm font-semibold text-[#0F2D3D]">
             {index + 1}. {question}
             <select className={inputClass} value={answers[index]} onChange={(event) => {
               setAnswers((current) => current.map((answer, answerIndex) => answerIndex === index ? event.target.value : answer));
@@ -333,7 +333,7 @@ function Phq2Widget() {
         ))}
       </div>
       {complete && (
-        <p role="status" className="mt-4 rounded-lg bg-[#E9F4F2] p-3 text-sm text-[#123C50]">
+        <p role="status" className="mt-4 rounded-lg bg-[#EAF4F1] p-3 text-sm text-[#0F2D3D]">
           Puntaje: <strong>{score}/6</strong>. {score >= 3 ? "Tamizaje positivo (punto de corte usual ≥3); completar evaluación clínica y valorar PHQ-9." : "Por debajo del punto de corte usual (≥3); esto no descarta depresión si hay sospecha clínica."}
         </p>
       )}
@@ -402,10 +402,10 @@ export default function Profesionales() {
   }, [normalizedQuery, visibleCalculatorGroups, visibleVademecumGroups]);
 
   return (
-    <main className="min-h-screen bg-[#F4F8F7] text-[#123C50]">
-      <header className="border-b border-[#DCE9E6] bg-white px-6 py-5">
+    <main className="min-h-screen bg-[#F6FAF8] text-[#0F2D3D]">
+      <header className="border-b border-[#D6E6E1] bg-white px-6 py-5">
         <div className="mx-auto max-w-5xl">
-          <Link href="/" className="font-bold text-[#18A69A]">← Volver al inicio</Link>
+          <Link href="/" className="font-bold text-[#0D9488]">← Volver al inicio</Link>
           <h1 className="mt-5 text-3xl font-extrabold">Herramientas</h1>
           <label className="mt-5 block text-sm font-semibold">
             Buscar herramientas
@@ -422,20 +422,20 @@ export default function Profesionales() {
 
       <section className="mx-auto max-w-5xl space-y-4 px-6 py-8" aria-label="Áreas de herramientas">
         {filteredSections.map((section) => (
-        <details key={section.id} id={section.id} open={section.id === "calculadoras"} className="group rounded-2xl border border-[#DCE9E6] bg-white p-5 shadow-sm sm:p-6">
+        <details key={section.id} id={section.id} open={section.id === "calculadoras"} className="group rounded-2xl border border-[#D6E6E1] bg-white p-5 shadow-sm sm:p-6">
             <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
               <span>
                 <span className="block text-xl font-extrabold">{section.title}</span>
                 <span className="mt-2 block text-sm leading-relaxed text-slate-600">{section.description}</span>
               </span>
-              <span className="mt-1 rounded-full bg-[#E9F4F2] px-3 py-1 text-sm font-bold text-[#16877F] group-open:rotate-180" aria-hidden="true">⌄</span>
+              <span className="mt-1 rounded-full bg-[#EAF4F1] px-3 py-1 text-sm font-bold text-[#0F766E] group-open:rotate-180" aria-hidden="true">⌄</span>
             </summary>
-            <div className="mt-5 border-t border-[#DCE9E6] pt-4">
+            <div className="mt-5 border-t border-[#D6E6E1] pt-4">
               <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
                 {section.details.map((detail) => <li key={detail}>{detail}</li>)}
               </ul>
               {section.href && (
-                <a href={section.href} target="_blank" rel="noreferrer" className="mt-4 inline-block font-bold text-[#16877F] underline underline-offset-4">
+                <a href={section.href} target="_blank" rel="noreferrer" className="mt-4 inline-block font-bold text-[#0F766E] underline underline-offset-4">
                   {section.linkLabel}
                 </a>
               )}
@@ -445,8 +445,8 @@ export default function Profesionales() {
                   <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                     {visibleVademecumGroups.map((group) => (
                       <li key={group.number}>
-                        <a href={group.href} target="_blank" rel="noreferrer" className="flex h-full items-center justify-between gap-3 rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] px-4 py-3 text-sm font-semibold text-[#123C50] hover:border-[#18A69A] hover:bg-[#E9F4F2]">
-                          <span>{group.number}. {group.title}</span><span className="shrink-0 text-[#16877F]">PDF IMSS ↗</span>
+                        <a href={group.href} target="_blank" rel="noreferrer" className="flex h-full items-center justify-between gap-3 rounded-xl border border-[#D6E6E1] bg-[#F8FBFA] px-4 py-3 text-sm font-semibold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1]">
+                          <span>{group.number}. {group.title}</span><span className="shrink-0 text-[#0F766E]">PDF IMSS ↗</span>
                         </a>
                       </li>
                     ))}
@@ -459,22 +459,22 @@ export default function Profesionales() {
                   <p className="text-sm text-slate-600">Las calculadoras están listas para usar y no guardan los datos introducidos. Usa la búsqueda para ir directamente a una fórmula; las últimas utilizadas aparecen primero.</p>
                   {visibleRecentCalculators.length > 0 && (
                     <section className="rounded-xl border border-[#B8D2CE] bg-[#F8FBFA] p-4" aria-label="Calculadoras usadas recientemente">
-                      <h3 className="font-bold text-[#123C50]">Usadas recientemente</h3>
+                      <h3 className="font-bold text-[#0F2D3D]">Usadas recientemente</h3>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {visibleRecentCalculators.map((calculator) => <a key={calculator.id + calculator.specialty} href={`#${calculatorAnchor(calculator)}`} className="rounded-full border border-[#DCE9E6] bg-white px-3 py-2 text-sm font-semibold text-[#123C50] hover:border-[#18A69A]">{calculator.title} <span className="text-xs text-slate-500">· {calculator.specialty}</span></a>)}
+                        {visibleRecentCalculators.map((calculator) => <a key={calculator.id + calculator.specialty} href={`#${calculatorAnchor(calculator)}`} className="rounded-full border border-[#D6E6E1] bg-white px-3 py-2 text-sm font-semibold text-[#0F2D3D] hover:border-[#0D9488]">{calculator.title} <span className="text-xs text-slate-500">· {calculator.specialty}</span></a>)}
                       </div>
                     </section>
                   )}
                   {visibleCalculatorGroups.map((group) => (
                     <section key={group.specialty} aria-label={group.specialty}>
-                      <h3 className="mb-2 font-bold text-[#123C50]">{group.specialty}</h3>
+                      <h3 className="mb-2 font-bold text-[#0F2D3D]">{group.specialty}</h3>
                       <ul className="grid gap-3 lg:grid-cols-2">
                         {group.items.map((calculator) => {
                           const isFavorite = favorites.some((favorite) => favorite.id === calculator.id);
-                          return <li id={calculatorAnchor(calculator)} key={calculator.id} className="scroll-mt-24 rounded-xl bg-[#F4F8F7] px-3 py-3 text-sm">
+                          return <li id={calculatorAnchor(calculator)} key={calculator.id} className="scroll-mt-24 rounded-xl bg-[#F6FAF8] px-3 py-3 text-sm">
                             <div className="flex items-center justify-between gap-3">
                               <span>{calculator.title}</span>
-                              <button type="button" aria-pressed={isFavorite} aria-label={`${isFavorite ? "Quitar de" : "Agregar a"} favoritas: ${calculator.title}`} onClick={() => setFavorites(toggleFavoriteCalculator(calculator))} className="shrink-0 rounded-lg px-3 py-2 font-bold text-[#16877F] hover:bg-white">
+                              <button type="button" aria-pressed={isFavorite} aria-label={`${isFavorite ? "Quitar de" : "Agregar a"} favoritas: ${calculator.title}`} onClick={() => setFavorites(toggleFavoriteCalculator(calculator))} className="shrink-0 rounded-lg px-3 py-2 font-bold text-[#0F766E] hover:bg-white">
                                 {isFavorite ? "★ Favorita" : "☆ Agregar"}
                               </button>
                             </div>
@@ -489,43 +489,43 @@ export default function Profesionales() {
               )}
               {section.id === "paraclinicos" && (
                 <div className="mt-5 space-y-5">
-                  <section className="rounded-xl border border-[#DCE9E6] bg-[#F4F8F7] p-4">
-                    <h3 className="font-bold text-[#123C50]">Biometría hemática · ejemplos en adultos</h3>
+                  <section className="rounded-xl border border-[#D6E6E1] bg-[#F6FAF8] p-4">
+                    <h3 className="font-bold text-[#0F2D3D]">Biometría hemática · ejemplos en adultos</h3>
                     <p className="mt-1 text-sm text-slate-600">Intervalos publicados por Mayo Clinic Laboratories para su método. La edad, el embarazo, el método y la población pueden cambiar los límites.</p>
                     <div className="mt-3 overflow-x-auto">
                       <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-                        <thead><tr className="border-b border-[#DCE9E6] text-[#123C50]"><th className="p-2">Parámetro</th><th className="p-2">Hombres adultos</th><th className="p-2">Mujeres adultas</th></tr></thead>
+                        <thead><tr className="border-b border-[#D6E6E1] text-[#0F2D3D]"><th className="p-2">Parámetro</th><th className="p-2">Hombres adultos</th><th className="p-2">Mujeres adultas</th></tr></thead>
                         <tbody className="text-slate-700">
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Eritrocitos</th><td className="p-2">4.35–5.65 ×10¹²/L</td><td className="p-2">3.92–5.13 ×10¹²/L</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Hemoglobina</th><td className="p-2">13.2–16.6 g/dL</td><td className="p-2">11.6–15.0 g/dL</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Leucocitos</th><td className="p-2">3.4–9.6 ×10⁹/L</td><td className="p-2">3.4–9.6 ×10⁹/L</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Eritrocitos</th><td className="p-2">4.35–5.65 ×10¹²/L</td><td className="p-2">3.92–5.13 ×10¹²/L</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Hemoglobina</th><td className="p-2">13.2–16.6 g/dL</td><td className="p-2">11.6–15.0 g/dL</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Leucocitos</th><td className="p-2">3.4–9.6 ×10⁹/L</td><td className="p-2">3.4–9.6 ×10⁹/L</td></tr>
                           <tr><th scope="row" className="p-2 font-semibold">Plaquetas</th><td className="p-2">135–317 ×10⁹/L</td><td className="p-2">157–371 ×10⁹/L</td></tr>
                         </tbody>
                       </table>
                     </div>
                     <div className="mt-5 overflow-x-auto">
-                      <h4 className="mb-2 font-bold text-[#123C50]">Química básica · ejemplos de referencia</h4>
+                      <h4 className="mb-2 font-bold text-[#0F2D3D]">Química básica · ejemplos de referencia</h4>
                       <table className="w-full min-w-[540px] border-collapse text-left text-sm">
-                        <thead><tr className="border-b border-[#DCE9E6] text-[#123C50]"><th className="p-2">Analito</th><th className="p-2">Intervalo publicado</th><th className="p-2">Población/nota</th></tr></thead>
+                        <thead><tr className="border-b border-[#D6E6E1] text-[#0F2D3D]"><th className="p-2">Analito</th><th className="p-2">Intervalo publicado</th><th className="p-2">Población/nota</th></tr></thead>
                         <tbody className="text-slate-700">
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Sodio</th><td className="p-2">135–145 mmol/L</td><td className="p-2">≥1 año</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Potasio</th><td className="p-2">3.6–5.2 mmol/L</td><td className="p-2">≥1 año</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Cloro</th><td className="p-2">98–107 mmol/L</td><td className="p-2">≥18 años</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Bicarbonato</th><td className="p-2">22–29 mmol/L</td><td className="p-2">Adultos</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Nitrógeno ureico (BUN)</th><td className="p-2">H: 8–24 · M: 6–21 mg/dL</td><td className="p-2">≥18 años</td></tr>
-                          <tr className="border-b border-[#DCE9E6]"><th scope="row" className="p-2 font-semibold">Creatinina</th><td className="p-2">H: 0.74–1.35 · M: 0.59–1.04 mg/dL</td><td className="p-2">H ≥15 · M ≥16 años</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Sodio</th><td className="p-2">135–145 mmol/L</td><td className="p-2">≥1 año</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Potasio</th><td className="p-2">3.6–5.2 mmol/L</td><td className="p-2">≥1 año</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Cloro</th><td className="p-2">98–107 mmol/L</td><td className="p-2">≥18 años</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Bicarbonato</th><td className="p-2">22–29 mmol/L</td><td className="p-2">Adultos</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Nitrógeno ureico (BUN)</th><td className="p-2">H: 8–24 · M: 6–21 mg/dL</td><td className="p-2">≥18 años</td></tr>
+                          <tr className="border-b border-[#D6E6E1]"><th scope="row" className="p-2 font-semibold">Creatinina</th><td className="p-2">H: 0.74–1.35 · M: 0.59–1.04 mg/dL</td><td className="p-2">H ≥15 · M ≥16 años</td></tr>
                           <tr><th scope="row" className="p-2 font-semibold">Glucosa</th><td className="p-2">70–140 mg/dL</td><td className="p-2">≥1 año; interpreta según ayuno/contexto</td></tr>
                         </tbody>
                       </table>
                     </div>
                     <p className="mt-3 text-xs leading-relaxed text-slate-600">Usa primero el intervalo de referencia que acompaña el resultado del paciente; estos valores no son universales. Revisa edad, embarazo, sexo, ayuno, método y contexto clínico.</p>
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#16877F]">
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#0F766E]">
                       <a href="https://www.mayocliniclabs.com/test-catalog/overview/9109" target="_blank" rel="noreferrer" className="underline underline-offset-2">Biometría hemática ↗</a>
                       <a href="https://www.mayocliniclabs.com/test-catalog/overview/113630" target="_blank" rel="noreferrer" className="underline underline-offset-2">Química básica ↗</a>
                     </div>
                   </section>
-                  <section className="rounded-xl border border-[#DCE9E6] bg-[#F4F8F7] p-4">
-                    <h3 className="font-bold text-[#123C50]">Radiografía de tórax · revisión sistemática</h3>
+                  <section className="rounded-xl border border-[#D6E6E1] bg-[#F6FAF8] p-4">
+                    <h3 className="font-bold text-[#0F2D3D]">Radiografía de tórax · revisión sistemática</h3>
                     <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-700">
                       <li>Confirma identidad, fecha, proyección y posición; valora rotación, penetración, movimiento e inspiración.</li>
                       <li>Revisa dispositivos y su trayecto/posición, si existen.</li>
@@ -534,7 +534,7 @@ export default function Profesionales() {
                       <li>Evalúa pleuras, senos costofrénicos y diafragmas; vuelve a correlacionar con síntomas y estudios previos.</li>
                     </ol>
                     <p className="mt-3 text-xs leading-relaxed text-slate-600">Lista educativa: una radiografía puede ser normal pese a enfermedad y la técnica limita su sensibilidad. Integra el informe radiológico y la situación clínica.</p>
-                    <a href="https://www.ncbi.nlm.nih.gov/books/NBK553874/" target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#16877F] underline underline-offset-2">Fuente: análisis sistemático de radiografía de tórax ↗</a>
+                    <a href="https://www.ncbi.nlm.nih.gov/books/NBK553874/" target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#0F766E] underline underline-offset-2">Fuente: análisis sistemático de radiografía de tórax ↗</a>
                   </section>
                   <p className="text-xs text-slate-500">Esta sección es material de consulta; no carga ni almacena resultados de pacientes.</p>
                 </div>
@@ -542,19 +542,19 @@ export default function Profesionales() {
               {section.id === "escalas" && (
                 <div className="mt-5 space-y-5">
                   <Phq2Widget />
-                  <section className="rounded-xl border border-[#DCE9E6] bg-[#F4F8F7] p-4">
-                    <h3 className="font-bold text-[#123C50]">PHQ-9 y GAD-7 · formularios oficiales</h3>
+                  <section className="rounded-xl border border-[#D6E6E1] bg-[#F6FAF8] p-4">
+                    <h3 className="font-bold text-[#0F2D3D]">PHQ-9 y GAD-7 · formularios oficiales</h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">Consulta y descarga las versiones oficiales en español. Antes de aplicar, confirma que el instrumento y la versión lingüística correspondan a la población y protocolo local.</p>
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#16877F]">
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#0F766E]">
                       <a href="https://www.nih.gov/node/19946" target="_blank" rel="noreferrer" className="underline underline-offset-2">PHQ-9 en español · NIH ↗</a>
                       <a href="https://www.phqscreeners.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">PHQ/GAD Screeners ↗</a>
                     </div>
                     <p className="mt-3 text-xs leading-relaxed text-slate-600">Un reactivo positivo de autolesión/suicidio en PHQ-9 requiere valoración clínica directa del riesgo y atención según el protocolo local.</p>
                   </section>
-                  <section className="rounded-xl border border-[#DCE9E6] bg-[#F4F8F7] p-4">
-                    <h3 className="font-bold text-[#123C50]">Somnolencia · Epworth (ESS)</h3>
+                  <section className="rounded-xl border border-[#D6E6E1] bg-[#F6FAF8] p-4">
+                    <h3 className="font-bold text-[#0F2D3D]">Somnolencia · Epworth (ESS)</h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">La escala ESS tiene derechos de autor y requiere licencia de uso, incluso cuando no implique pago. No se incluyen sus reactivos aquí.</p>
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#16877F]">
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-[#0F766E]">
                       <a href="https://epworthsleepinessscale.com/licenses/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Consultar licencia oficial ↗</a>
                       <a href="https://eprovide.mapi-trust.org/instruments/epworth-sleepiness-scale" target="_blank" rel="noreferrer" className="underline underline-offset-2">Solicitar uso mediante Mapi Research Trust ↗</a>
                     </div>

@@ -12,14 +12,14 @@ import {
   type ProfessionalProfile,
 } from "../../../lib/professional-profile";
 
-const fields: { key: keyof ProfessionalProfile; label: string; type?: string }[] = [
+const fields: { key: Exclude<keyof ProfessionalProfile, "exploracionPersonalizada" | "pacientePlantilla" | "padecimientoPlantilla">; label: string; type?: string }[] = [
   { key: "nombre", label: "Nombre completo" },
   { key: "matricula", label: "Matrícula" },
   { key: "cedula", label: "Cédula profesional" },
   { key: "unidad", label: "Unidad médica" },
 ];
 
-const inputClass = "mt-2 w-full rounded-xl border border-[#DCE9E6] bg-white px-4 py-3 text-[#123C50] outline-none focus:border-[#18A69A] focus:ring-2 focus:ring-[#18A69A]/15";
+const inputClass = "mt-2 w-full rounded-xl border border-[#D6E6E1] bg-white px-4 py-3 text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15";
 
 export default function ProfessionalProfilePage() {
   const [profile, setProfile] = useState<ProfessionalProfile>(emptyProfessionalProfile);
@@ -49,12 +49,18 @@ export default function ProfessionalProfilePage() {
           matricula: readText("matricula", "professional_id", "registration_number"),
           cedula: readText("cedula_profesional", "cedulaProfesional", "professional_license"),
           unidad: readText("unidad_medica", "unidadMedica", "medical_unit"),
+          exploracionPersonalizada: "",
+          pacientePlantilla: "",
+          padecimientoPlantilla: "",
         };
         setProfile((current) => ({
           nombre: current.nombre || fromAuth.nombre,
           matricula: current.matricula || fromAuth.matricula,
           cedula: current.cedula || fromAuth.cedula,
           unidad: current.unidad || fromAuth.unidad,
+          exploracionPersonalizada: current.exploracionPersonalizada,
+          pacientePlantilla: current.pacientePlantilla,
+          padecimientoPlantilla: current.padecimientoPlantilla,
         }));
         setStatus("Se cargaron los datos disponibles del perfil profesional.");
       }).catch(() => {
@@ -91,25 +97,70 @@ export default function ProfessionalProfilePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F4F8F7] px-5 py-8 text-[#123C50] sm:px-8">
+    <main className="min-h-screen bg-[#F6FAF8] px-5 py-8 text-[#0F2D3D] sm:px-8">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="font-bold text-[#16877F]">← Volver al inicio</Link>
-        <p className="mt-7 text-sm font-bold uppercase tracking-widest text-[#18A69A]">Herramientas para profesionales</p>
+        <Link href="/" className="font-bold text-[#0F766E]">← Volver al inicio</Link>
+        <p className="mt-7 text-sm font-bold uppercase tracking-widest text-[#0D9488]">Herramientas para profesionales</p>
         <h1 className="mt-2 text-3xl font-extrabold">Mi perfil</h1>
         <p className="mt-2 text-slate-600">Completa los datos que aparecen en la hoja clínica. Si hay una sesión conectada, se cargan los valores disponibles del perfil profesional.</p>
         <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">Los datos profesionales se guardan solo en el almacenamiento local de este navegador para completar futuras consultas. No se envían a un expediente médico y puedes borrarlos desde aquí.</p>
 
-        <form onSubmit={save} className="mt-6 space-y-5 rounded-2xl border border-[#DCE9E6] bg-white p-6 shadow-sm">
+        <form onSubmit={save} className="mt-6 space-y-5 rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm">
           {fields.map(({ key, label }) => (
             <label key={key} className="block text-sm font-semibold">
               {label}
               <input className={inputClass} name={key} value={profile[key]} onChange={(event) => setProfile((current) => ({ ...current, [key]: event.target.value }))} maxLength={180} required={key === "nombre"} />
             </label>
           ))}
+          <label className="block text-sm font-semibold">
+            Plantilla de ficha de paciente (opcional)
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Si la dejas vacía, se usará: &quot;Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx&quot;.
+            </span>
+            <textarea
+              className={inputClass + " resize-y"}
+              name="pacientePlantilla"
+              rows={2}
+              maxLength={1000}
+              value={profile.pacientePlantilla}
+              onChange={(event) => setProfile((current) => ({ ...current, pacientePlantilla: event.target.value }))}
+              placeholder="Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx"
+            />
+          </label>
+          <label className="block text-sm font-semibold">
+            Plantilla de padecimiento actual (opcional)
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Si la dejas vacía, se usará: &quot;Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado&quot;.
+            </span>
+            <textarea
+              className={inputClass + " resize-y"}
+              name="padecimientoPlantilla"
+              rows={3}
+              maxLength={2000}
+              value={profile.padecimientoPlantilla}
+              onChange={(event) => setProfile((current) => ({ ...current, padecimientoPlantilla: event.target.value }))}
+              placeholder="Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado"
+            />
+          </label>
+          <label className="block text-sm font-semibold">
+            Exploración física o formato propio (opcional)
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Si capturas aquí tu propio formato de exploración física, aparecerá precargado automáticamente cada vez que inicies una nota clínica.
+            </span>
+            <textarea
+              className={inputClass + " resize-y"}
+              name="exploracionPersonalizada"
+              rows={7}
+              maxLength={4000}
+              value={profile.exploracionPersonalizada}
+              onChange={(event) => setProfile((current) => ({ ...current, exploracionPersonalizada: event.target.value }))}
+              placeholder="Ej. Paciente consciente, orientado, cooperador, cardiopulmonar sin compromiso, abdomen blando depresible sin dolor, extremidades íntegras..."
+            />
+          </label>
           <div className="flex flex-wrap gap-3 pt-2">
-            <button type="submit" className="rounded-xl bg-[#18A69A] px-5 py-3 font-bold text-white hover:bg-[#16877F]">Guardar perfil</button>
-            <button type="button" onClick={clear} className="rounded-xl border border-[#DCE9E6] px-5 py-3 font-bold">Borrar perfil</button>
-            <Link href="/profesionales/consulta/hoja-clinica" className="rounded-xl border border-[#18A69A] px-5 py-3 font-bold text-[#123C50]">Iniciar consulta</Link>
+            <button type="submit" className="rounded-xl bg-[#0D9488] px-5 py-3 font-bold text-white hover:bg-[#0F766E]">Guardar perfil</button>
+            <button type="button" onClick={clear} className="rounded-xl border border-[#D6E6E1] px-5 py-3 font-bold">Borrar perfil</button>
+            <Link href="/profesionales/consulta/hoja-clinica" className="rounded-xl border border-[#0D9488] px-5 py-3 font-bold text-[#0F2D3D]">Iniciar consulta</Link>
           </div>
         </form>
         <p role="status" className="mt-4 rounded-xl bg-white p-4 text-sm text-slate-700">{status}</p>

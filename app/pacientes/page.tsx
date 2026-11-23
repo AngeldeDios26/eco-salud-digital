@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const cartillas = [
   {
@@ -35,11 +35,11 @@ const cartillas = [
 
 export default function Pacientes() {
   return (
-    <main className="min-h-screen bg-[#F4F8F7] text-[#123C50]">
+    <main className="min-h-screen bg-[#F6FAF8] text-[#0F2D3D]">
 
-      <header className="border-b border-[#DCE9E6] bg-white px-6 py-5">
+      <header className="border-b border-[#D6E6E1] bg-white px-6 py-5">
         <div className="mx-auto max-w-6xl">
-          <Link href="/" className="font-bold text-[#18A69A]">
+          <Link href="/" className="font-bold text-[#0D9488]">
             ← Volver al inicio
           </Link>
 
@@ -65,12 +65,12 @@ export default function Pacientes() {
           </p>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-[#B9DED8] bg-[#E9F4F2] p-6">
+        <div className="mb-8 rounded-2xl border border-[#B9DED8] bg-[#EAF4F1] p-6">
           <h2 className="text-xl font-extrabold">Comparte tus datos con tu médico</h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
             Prepara un QR temporal con los datos que elijas. El código vence en cinco minutos y solo puede leerse una vez.
           </p>
-          <Link href="/pacientes/qr" className="mt-4 inline-flex rounded-xl bg-[#18A69A] px-5 py-3 font-bold text-white transition hover:bg-[#138C82]">
+          <Link href="/pacientes/qr" className="mt-4 inline-flex rounded-xl bg-[#0D9488] px-5 py-3 font-bold text-white transition hover:bg-[#138C82]">
             Preparar datos y generar QR temporal
           </Link>
         </div>
@@ -80,13 +80,13 @@ export default function Pacientes() {
           {cartillas.map((cartilla) => (
             <article
               key={cartilla.nombre}
-              className="rounded-2xl border border-[#DCE9E6] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              className="rounded-2xl border border-[#D6E6E1] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <div className="text-4xl">
                 {cartilla.icono}
               </div>
 
-              <p className="mt-5 text-sm font-bold text-[#18A69A]">
+              <p className="mt-5 text-sm font-bold text-[#0D9488]">
                 {cartilla.edad}
               </p>
 
@@ -98,7 +98,7 @@ export default function Pacientes() {
                 {cartilla.descripcion}
               </p>
 
-              <div className="mt-6 rounded-xl bg-[#E9F4F2] px-4 py-3 text-center font-bold text-[#16877F]">
+              <div className="mt-6 rounded-xl bg-[#EAF4F1] px-4 py-3 text-center font-bold text-[#0F766E]">
                 Próximamente
               </div>
             </article>
@@ -106,7 +106,7 @@ export default function Pacientes() {
 
         </div>
 
-        <div className="mt-12 rounded-2xl bg-[#123C50] p-8 text-white">
+        <div className="mt-12 rounded-2xl bg-[#0F2D3D] p-8 text-white">
           <h2 className="text-2xl font-bold">
             Tu salud, tu información
           </h2>
@@ -119,7 +119,7 @@ export default function Pacientes() {
 
       </section>
 
-      <footer className="border-t border-[#DCE9E6] bg-white px-6 py-8 text-center text-sm text-slate-500">
+      <footer className="border-t border-[#D6E6E1] bg-white px-6 py-8 text-center text-sm text-slate-500">
         © 2026 SALUD DIGITAL. Proyecto tecnológico en desarrollo.
       </footer>
 

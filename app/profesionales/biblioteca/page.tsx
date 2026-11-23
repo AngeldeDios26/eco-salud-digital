@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -54,7 +54,7 @@ const categories: { id: string; title: string; resources: LibraryResource[] }[] 
   },
 ];
 
-const inputClass = "mt-2 w-full rounded-xl border border-[#DCE9E6] bg-white px-4 py-3 text-[#123C50] outline-none focus:border-[#18A69A] focus:ring-2 focus:ring-[#18A69A]/15";
+const inputClass = "mt-2 w-full rounded-xl border border-[#D6E6E1] bg-white px-4 py-3 text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15";
 
 function normalizeLibrarySearch(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-MX");
@@ -65,13 +65,13 @@ function ResourceCard({ resource, favorite, onToggleFavorite, onOpen }: { resour
     <article className="rounded-xl bg-[#F8FBFA] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#16877F]">{resource.organization}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#0F766E]">{resource.organization}</p>
           <h3 className="mt-1 font-bold">{resource.title}</h3>
         </div>
-        <button type="button" aria-pressed={favorite} aria-label={`${favorite ? "Quitar" : "Agregar"} ${resource.title} ${favorite ? "de" : "a"} favoritos`} onClick={onToggleFavorite} className="shrink-0 rounded-lg px-3 py-2 font-bold text-[#16877F] hover:bg-white">{favorite ? "★" : "☆"}</button>
+        <button type="button" aria-pressed={favorite} aria-label={`${favorite ? "Quitar" : "Agregar"} ${resource.title} ${favorite ? "de" : "a"} favoritos`} onClick={onToggleFavorite} className="shrink-0 rounded-lg px-3 py-2 font-bold text-[#0F766E] hover:bg-white">{favorite ? "★" : "☆"}</button>
       </div>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{resource.description}</p>
-      <a href={resource.url} target="_blank" rel="noreferrer" onClick={onOpen} className="mt-3 inline-block font-bold text-[#16877F] underline underline-offset-4">Abrir sitio ↗</a>
+      <a href={resource.url} target="_blank" rel="noreferrer" onClick={onOpen} className="mt-3 inline-block font-bold text-[#0F766E] underline underline-offset-4">Abrir sitio ↗</a>
     </article>
   );
 }
@@ -110,10 +110,10 @@ export default function ProfessionalLibraryPage() {
   const toggleResourceFavorite = (resource: LibraryResource) => setFavoriteUrls(toggleFavoriteLibraryItem(resource.url));
 
   return (
-    <main className="min-h-screen bg-[#F4F8F7] px-5 py-8 text-[#123C50] sm:px-8">
+    <main className="min-h-screen bg-[#F6FAF8] px-5 py-8 text-[#0F2D3D] sm:px-8">
       <div className="mx-auto max-w-4xl">
-        <Link href="/" className="font-bold text-[#16877F]">← Volver al inicio</Link>
-        <p className="mt-7 text-sm font-bold uppercase tracking-widest text-[#18A69A]">Herramientas para profesionales</p>
+        <Link href="/" className="font-bold text-[#0F766E]">← Volver al inicio</Link>
+        <p className="mt-7 text-sm font-bold uppercase tracking-widest text-[#0D9488]">Herramientas para profesionales</p>
         <h1 className="mt-2 text-3xl font-extrabold">Mi Biblioteca</h1>
         <label className="mt-5 block text-sm font-semibold">
           Buscar en la biblioteca
@@ -121,11 +121,11 @@ export default function ProfessionalLibraryPage() {
         </label>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2" aria-label="Favoritos y recursos recientes">
-            <section className="rounded-2xl border border-[#DCE9E6] bg-white p-5 shadow-sm" aria-label="Favoritos de biblioteca">
+            <section className="rounded-2xl border border-[#D6E6E1] bg-white p-5 shadow-sm" aria-label="Favoritos de biblioteca">
               <h2 className="text-lg font-extrabold">Favoritos</h2>
               {favoriteResources.length ? <div className="mt-3 space-y-3">{favoriteResources.map((resource) => <ResourceCard key={resource.url} resource={resource} favorite onToggleFavorite={() => toggleResourceFavorite(resource)} onOpen={() => markResourceOpened(resource)} />)}</div> : <p className="mt-2 text-sm text-slate-600">Marca con ☆ las fuentes que quieras dejar a mano.</p>}
             </section>
-            <section className="rounded-2xl border border-[#DCE9E6] bg-white p-5 shadow-sm" aria-label="Recursos recientes de biblioteca">
+            <section className="rounded-2xl border border-[#D6E6E1] bg-white p-5 shadow-sm" aria-label="Recursos recientes de biblioteca">
               <h2 className="text-lg font-extrabold">Recientes</h2>
               {recentResources.length ? <div className="mt-3 space-y-3">{recentResources.map((resource) => <ResourceCard key={resource.url} resource={resource} favorite={favoriteUrls.includes(resource.url)} onToggleFavorite={() => toggleResourceFavorite(resource)} onOpen={() => markResourceOpened(resource)} />)}</div> : <p className="mt-2 text-sm text-slate-600">Al abrir una fuente aparecerá aquí para que puedas volver rápido.</p>}
             </section>
@@ -133,12 +133,12 @@ export default function ProfessionalLibraryPage() {
 
         <div className="mt-6 space-y-4" aria-label="Categorías de la biblioteca">
           {filteredCategories.map((category) => (
-            <details key={category.id} id={category.id} className="group rounded-2xl border border-[#DCE9E6] bg-white p-5 shadow-sm sm:p-6">
+            <details key={category.id} id={category.id} className="group rounded-2xl border border-[#D6E6E1] bg-white p-5 shadow-sm sm:p-6">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
                 <span className="text-xl font-extrabold">{category.title}</span>
-                <span className="rounded-full bg-[#E9F4F2] px-3 py-1 text-sm font-bold text-[#16877F] group-open:rotate-180" aria-hidden="true">⌄</span>
+                <span className="rounded-full bg-[#EAF4F1] px-3 py-1 text-sm font-bold text-[#0F766E] group-open:rotate-180" aria-hidden="true">⌄</span>
               </summary>
-              <div className="mt-4 space-y-4 border-t border-[#DCE9E6] pt-4">
+              <div className="mt-4 space-y-4 border-t border-[#D6E6E1] pt-4">
                 {category.resources.map((resource) => (
                   <ResourceCard key={resource.url} resource={resource} favorite={favoriteUrls.includes(resource.url)} onToggleFavorite={() => toggleResourceFavorite(resource)} onOpen={() => markResourceOpened(resource)} />
                 ))}

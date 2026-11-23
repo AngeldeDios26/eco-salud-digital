@@ -1,6 +1,20 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { BrandLogo } from "../../../../components/BrandLogo";
+import {
+  imssMedicationsCatalog,
+  RECETA_DRAFT_STORAGE_KEY,
+  type ImssMedication,
+  type RecetaDraft,
+} from "../../../../lib/imss-medications";
+import {
+  DEFAULT_PADECIMIENTO_TEMPLATE,
+  DEFAULT_PATIENT_TEMPLATE,
+  readProfessionalProfile,
+  saveProfessionalProfile,
+} from "../../../../lib/professional-profile";
 
 type Cie10Entry = {
   code: string;
@@ -19,6 +33,9 @@ type ProfessionalDetails = {
   matricula: string;
   cedula: string;
   unidad: string;
+  exploracionPersonalizada: string;
+  pacientePlantilla: string;
+  padecimientoPlantilla: string;
 };
 
 type PrescribedMedication = {
@@ -84,9 +101,11 @@ type ActiveModalWindow =
   | "diabetes"
   | "hipertension"
   | "prenatal"
+  | "general"
   | "receta"
   | "perfil"
-  | "herramientas";
+  | "herramientas"
+  | "qr";
 
 const DOCTOR_PROFILE_FIELDS: DoctorProfileFieldConfig[] = [
   { key: "nombre", label: "Nombre completo del médico", name: "medicoNombre" },
@@ -128,12 +147,12 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
       <p style="font-size:12px;color:#334155;margin-bottom:10px;">
         <strong>Interpretación nutricional oficial:</strong> Bajo peso / Desnutrición: &lt; Percentil 3 (o &lt;-2 DE) · Peso normal: Percentil 15 a 84 · Sobrepeso: Percentil 85 a 94 · Obesidad: ≥ Percentil 95.
       </p>
-      <h3 style="font-size:13px;background:#123C50;color:white;padding:6px 10px;border-radius:6px;margin:10px 0 6px 0;">
+      <h3 style="font-size:13px;background:#0F2D3D;color:white;padding:6px 10px;border-radius:6px;margin:10px 0 6px 0;">
         1. Referencia Rápida de Peso (kg) y Longitud/Talla (cm) — 0 a 5 Años (OMS / CDC)
       </h3>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;">
         <thead>
-          <tr style="background:#E9F4F2;color:#123C50;">
+          <tr style="background:#EAF4F1;color:#0F2D3D;">
             <th style="border:1px solid #94A3B8;padding:5px;">Edad</th>
             <th style="border:1px solid #94A3B8;padding:5px;">Niños Peso P3 / P50 / P97 (kg)</th>
             <th style="border:1px solid #94A3B8;padding:5px;">Niñas Peso P3 / P50 / P97 (kg)</th>
@@ -153,12 +172,12 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
         </tbody>
       </table>
 
-      <h3 style="font-size:13px;background:#18A69A;color:white;padding:6px 10px;border-radius:6px;margin:10px 0 6px 0;">
+      <h3 style="font-size:13px;background:#0D9488;color:white;padding:6px 10px;border-radius:6px;margin:10px 0 6px 0;">
         2. Percentiles de Peso, Talla e IMC por Edad — 6 a 16 Años (CDC NCHS)
       </h3>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;">
         <thead>
-          <tr style="background:#E9F4F2;color:#123C50;">
+          <tr style="background:#EAF4F1;color:#0F2D3D;">
             <th style="border:1px solid #94A3B8;padding:5px;">Edad</th>
             <th style="border:1px solid #94A3B8;padding:5px;">Peso P50 Niños / Niñas (kg)</th>
             <th style="border:1px solid #94A3B8;padding:5px;">Talla P50 Niños / Niñas (cm)</th>
@@ -186,7 +205,7 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
     source: "Protocolo Internacional AHA / ESC / Guías IMSS de Monitoreo Domiciliario",
     subtitle: "Formato imprimible para registro matutino y vespertino durante 7 a 14 días",
     htmlBody: `
-      <div style="border:1px solid #18A69A;background:#F4F8F7;padding:10px;border-radius:8px;font-size:11px;margin-bottom:12px;">
+      <div style="border:1px solid #0D9488;background:#F6FAF8;padding:10px;border-radius:8px;font-size:11px;margin-bottom:12px;">
         <strong>Instrucciones internacionales (AHA / ESC) para medir su presión arterial en casa:</strong><br/>
         1. Repose sentado durante <strong>5 minutos</strong> antes de la medición, con la espalda apoyada, pies sobre el piso sin cruzar las piernas y brazo apoyado a la altura del corazón.<br/>
         2. No fume, no tome café/refresco ni haga ejercicio 30 minutos antes; acuda al baño previamente.<br/>
@@ -194,7 +213,7 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead>
-          <tr style="background:#123C50;color:white;">
+          <tr style="background:#0F2D3D;color:white;">
             <th style="border:1px solid #64748B;padding:5px;">Día / Fecha</th>
             <th style="border:1px solid #64748B;padding:5px;">Mañana Toma 1 (TA)</th>
             <th style="border:1px solid #64748B;padding:5px;">Mañana Toma 2 (TA)</th>
@@ -234,7 +253,7 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
     source: "Estándares Internacionales ADA (American Diabetes Association) / GPC IMSS",
     subtitle: "Bitácora imprimible de automonitoreo glucémico estructurado en casa",
     htmlBody: `
-      <div style="border:1px solid #18A69A;background:#F4F8F7;padding:10px;border-radius:8px;font-size:11px;margin-bottom:12px;">
+      <div style="border:1px solid #0D9488;background:#F6FAF8;padding:10px;border-radius:8px;font-size:11px;margin-bottom:12px;">
         <strong>Metas internacionales de control glucémico (ADA / GPC IMSS):</strong><br/>
         • <strong>Glucosa en ayuno o antes de las comidas (Preprandial):</strong> 80 a 130 mg/dL.<br/>
         • <strong>Glucosa 2 horas después de iniciar los alimentos (Posprandial):</strong> Menor a 180 mg/dL.<br/>
@@ -243,7 +262,7 @@ const PRINTABLE_CLINICAL_FORMATS: PrintableClinicalFormat[] = [
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead>
-          <tr style="background:#123C50;color:white;">
+          <tr style="background:#0F2D3D;color:white;">
             <th style="border:1px solid #64748B;padding:5px;">Fecha</th>
             <th style="border:1px solid #64748B;padding:5px;">Ayuno (mg/dL)</th>
             <th style="border:1px solid #64748B;padding:5px;">2h Post-Desayuno</th>
@@ -609,10 +628,10 @@ const SIDEBAR_CALCULATORS: Record<string, CalculatorConfig> = {
 };
 
 const inputClassName =
-  "mt-1.5 w-full rounded-xl border border-[#DCE9E6] bg-white px-3.5 py-2 text-sm text-[#123C50] outline-none transition placeholder:text-slate-400 focus:border-[#18A69A] focus:ring-2 focus:ring-[#18A69A]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
+  "mt-1.5 w-full rounded-xl border border-[#D6E6E1] bg-white px-3.5 py-2 text-sm text-[#0F2D3D] outline-none transition placeholder:text-slate-400 focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
 
 const sectionClassName =
-  "overflow-hidden rounded-2xl border border-[#DCE9E6] bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5";
+  "overflow-hidden rounded-2xl border border-[#D6E6E1] bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5";
 
 const defaultParaclinicos = "Sin paraclínicos que comentar";
 
@@ -621,6 +640,9 @@ const defaultRegisteredDoctor: ProfessionalDetails = {
   cedula: "12345678",
   matricula: "99887766",
   unidad: "UMF No. 1 · IMSS",
+  exploracionPersonalizada: "",
+  pacientePlantilla: "",
+  padecimientoPlantilla: "",
 };
 
 const defaultAntecedents = [
@@ -647,33 +669,7 @@ const defaultGynecologic = [
   "Antecedentes ginecológicos relevantes: Interrogados y negados",
 ].join("\n");
 
-const imssMedicationsCatalog = [
-  { code: "010.000.5165.00", name: "Metformina 850 mg", presentation: "Tableta 850 mg; envase con 30", dose: "1 tableta (850 mg) con los alimentos", route: "Oral", frequency: "Cada 12 o cada 8 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.1042.00", name: "Glibenclamida 5 mg", presentation: "Tableta 5 mg; envase con 50", dose: "2.5 a 5 mg antes del desayuno o comida principal", route: "Oral", frequency: "Cada 12 o 24 horas", duration: "30 días", quantity: "1 envase" },
-  { code: "010.000.1050.00", name: "Insulina humana NPH 100 UI/mL", presentation: "Suspensión inyectable 100 UI/mL; frasco ámpula 10 mL", dose: "Ajustar UI según glucemia capilar y peso", route: "Subcutánea", frequency: "Cada 12 o 24 horas", duration: "30 días", quantity: "1 frasco ámpula" },
-  { code: "010.000.4158.00", name: "Insulina glargina 100 UI/mL", presentation: "Solución inyectable 100 UI/mL; frasco ámpula 10 mL o pluma", dose: "Ajustar UI según meta de glucosa en ayuno", route: "Subcutánea", frequency: "Cada 24 horas a la misma hora", duration: "30 días", quantity: "1 envase" },
-  { code: "010.000.2501.00", name: "Enalapril 10 mg", presentation: "Cápsula o tableta de 10 mg; envase con 30", dose: "10 mg inicial; mantenimiento 10 a 20 mg", route: "Oral", frequency: "Cada 12 o 24 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.2520.00", name: "Losartán 50 mg", presentation: "Gragea o comprimido recubierto 50 mg; envase con 30", dose: "50 mg (1 gragea)", route: "Oral", frequency: "Cada 12 o 24 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.2540.00", name: "Telmisartán 40 mg", presentation: "Tableta 40 mg; envase con 30", dose: "40 a 80 mg", route: "Oral", frequency: "Cada 24 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.2111.00", name: "Amlodipino 5 mg", presentation: "Tableta o cápsula 5 mg; envase con 10 o 30", dose: "5 a 10 mg", route: "Oral", frequency: "Cada 24 horas", duration: "30 días", quantity: "1 a 3 envases" },
-  { code: "010.000.2301.00", name: "Hidroclorotiazida 25 mg", presentation: "Tableta 25 mg; envase con 20", dose: "12.5 a 25 mg por la mañana", route: "Oral", frequency: "Cada 24 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.5106.00", name: "Atorvastatina 20 mg", presentation: "Tableta 20 mg; envase con 10", dose: "1 a 2 tabletas (20 a 40 mg) por la noche", route: "Oral", frequency: "Cada 24 horas", duration: "30 días", quantity: "3 envases" },
-  { code: "010.000.0657.00", name: "Pravastatina 10 mg", presentation: "Tableta 10 mg; envase con 30", dose: "10 a 40 mg por la noche", route: "Oral", frequency: "Cada 24 horas", duration: "30 días", quantity: "1 a 2 envases" },
-  { code: "010.000.0655.00", name: "Bezafibrato 200 mg", presentation: "Tableta 200 mg; envase con 30", dose: "200 mg (1 tableta) después de los alimentos", route: "Oral", frequency: "Cada 8 o 12 horas", duration: "30 días", quantity: "2 envases" },
-  { code: "010.000.0103.00", name: "Ácido acetilsalicílico 100 mg (Protect)", presentation: "Tableta soluble o con capa entérica 100 mg; envase con 30", dose: "100 mg (1 tableta)", route: "Oral", frequency: "Cada 24 horas después de los alimentos", duration: "30 días", quantity: "1 envase" },
-  { code: "010.000.1706.00", name: "Ácido fólico 0.4 mg (400 mcg)", presentation: "Tableta 0.4 mg; envase con 90", dose: "1 tableta (0.4 mg)", route: "Oral", frequency: "Cada 24 horas", duration: "90 días", quantity: "1 envase" },
-  { code: "010.000.1701.00", name: "Fumarato ferroso 200 mg", presentation: "Tableta 200 mg; envase con 50", dose: "1 tableta (200 mg)", route: "Oral", frequency: "Cada 24 horas lejos de lácteos", duration: "30 días", quantity: "1 envase" },
-  { code: "010.000.0104.00", name: "Paracetamol 500 mg", presentation: "Tableta 500 mg; envase con 10", dose: "500 mg a 1 g (1 a 2 tabletas)", route: "Oral", frequency: "Cada 6 u 8 horas en caso de dolor o fiebre", duration: "3 a 5 días", quantity: "1 a 2 envases" },
-  { code: "010.000.3407.00", name: "Naproxeno 250 mg", presentation: "Tableta 250 mg; envase con 30", dose: "250 a 500 mg con alimentos", route: "Oral", frequency: "Cada 12 horas", duration: "5 a 7 días", quantity: "1 envase" },
-  { code: "010.000.3417.00", name: "Diclofenaco 100 mg", presentation: "Cápsula o gragea de liberación prolongada 100 mg; envase con 20", dose: "100 mg (1 gragea)", route: "Oral", frequency: "Cada 24 horas después de alimentos", duration: "5 días", quantity: "1 envase" },
-  { code: "010.000.2128.00", name: "Amoxicilina 500 mg", presentation: "Cápsula 500 mg; envase con 12 o 15", dose: "500 mg (1 cápsula)", route: "Oral", frequency: "Cada 8 horas", duration: "7 días", quantity: "2 envases" },
-  { code: "010.000.4255.00", name: "Ciprofloxacino 250 mg", presentation: "Cápsula o tableta 250 mg; envase con 8", dose: "250 a 500 mg", route: "Oral", frequency: "Cada 12 horas", duration: "7 días", quantity: "2 envases" },
-  { code: "010.000.1903.00", name: "Trimetoprima con sulfametoxazol 160/800 mg", presentation: "Tableta 160/800 mg; envase con 14", dose: "1 tableta", route: "Oral", frequency: "Cada 12 horas", duration: "7 días", quantity: "1 envase" },
-  { code: "010.000.5186.00", name: "Omeprazol 20 mg", presentation: "Cápsula o tableta 20 mg; envase con 14", dose: "20 mg (1 cápsula) en ayuno", route: "Oral", frequency: "Cada 24 horas", duration: "14 a 28 días", quantity: "1 a 2 envases" },
-  { code: "010.000.1242.00", name: "Metoclopramida 10 mg", presentation: "Tableta 10 mg; envase con 20", dose: "10 mg 30 minutos antes de los alimentos", route: "Oral", frequency: "Cada 8 horas", duration: "3 a 5 días", quantity: "1 envase" },
-  { code: "010.000.2144.00", name: "Loratadina 10 mg", presentation: "Tableta o gragea 10 mg; envase con 20", dose: "10 mg (1 tableta)", route: "Oral", frequency: "Cada 24 horas", duration: "5 a 10 días", quantity: "1 envase" },
-  { code: "010.000.0429.00", name: "Salbutamol aerosol 100 mcg/dosis", presentation: "Suspensión en aerosol 200 dosis", dose: "1 a 2 inhalaciones", route: "Inhalada", frequency: "Cada 6 u 8 horas o rescate", duration: "Según respuesta clínica", quantity: "1 envase" },
-];
+// Catálogo de medicamentos importado desde lib/imss-medications.ts
 
 function buildPatientIndications(
   diagnoses: SelectedDiagnosis[],
@@ -767,49 +763,6 @@ function normalizeSearchText(value: string) {
     .toLocaleLowerCase("es-MX");
 }
 
-function BrandLogo({ size = "md" }: { size?: "md" | "lg" }) {
-  const boxSize = size === "lg" ? "h-12 w-12 rounded-2xl" : "h-10 w-10 rounded-xl";
-  const svgSize = size === "lg" ? "h-9 w-9" : "h-7 w-7";
-  return (
-    <div
-      className={
-        boxSize +
-        " flex shrink-0 items-center justify-center bg-gradient-to-br from-[#123C50] via-[#156B70] to-[#18A69A] shadow-sm"
-      }
-      aria-hidden="true"
-    >
-      <svg
-        viewBox="0 0 64 64"
-        className={svgSize}
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M24 10C24 8.34315 25.3431 7 27 7H37C38.6569 7 40 8.34315 40 10V24H54C55.6569 24 57 25.3431 57 27V37C57 38.6569 55.6569 40 54 40H40V54C40 55.6569 38.6569 57 37 57H27C25.3431 57 24 55.6569 24 54V40H10C8.34315 40 7 38.6569 7 37V27C7 25.3431 8.34315 24 10 24H24V10Z"
-          fill="white"
-        />
-        <path
-          d="M14 35C22 35 25 27 33 27C39 27 42 22 47 22"
-          stroke="#18A69A"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M23 41C29 41 33 34 40 34C45 34 48 31 51 31"
-          stroke="#123C50"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-        />
-        <circle cx="14" cy="35" r="3" fill="#18A69A" />
-        <circle cx="33" cy="27" r="2.8" fill="#18A69A" />
-        <circle cx="47" cy="22" r="3" fill="#18A69A" />
-        <circle cx="23" cy="41" r="2.8" fill="#123C50" />
-        <circle cx="51" cy="31" r="3" fill="#123C50" />
-      </svg>
-    </div>
-  );
-}
-
 function Field({
   label,
   name,
@@ -826,7 +779,7 @@ function Field({
   onChange?: (value: string) => void;
 }) {
   return (
-    <label className="block text-sm font-semibold text-[#123C50]">
+    <label className="block text-sm font-semibold text-[#0F2D3D]">
       {label}
       <input
         className={inputClassName}
@@ -854,13 +807,13 @@ function SectionHeading({
   variant?: "teal" | "navy" | "blue";
 }) {
   const headerStyles = {
-    teal: "bg-[#18A69A] text-white",
-    navy: "bg-[#123C50] text-white",
-    blue: "bg-[#2456C7] text-white",
+    teal: "bg-[#0D9488] text-white",
+    navy: "bg-[#0F2D3D] text-white",
+    blue: "bg-[#0284C7] text-white",
   }[variant];
 
   return (
-    <div className="-mx-4 -mt-4 mb-4 border-b border-[#DCE9E6] sm:-mx-5 sm:-mt-5">
+    <div className="-mx-4 -mt-4 mb-4 border-b border-[#D6E6E1] sm:-mx-5 sm:-mt-5">
       <div
         className={`flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 ${headerStyles}`}
       >
@@ -883,6 +836,7 @@ function SectionHeading({
 }
 
 export default function App() {
+  const router = useRouter();
   // Estado de Autenticación (Inicio de Sesión y Registro)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
@@ -895,6 +849,18 @@ export default function App() {
   const [enabledCalcIds, setEnabledCalcIds] = useState<string[]>(() =>
     Object.keys(SIDEBAR_CALCULATORS),
   );
+  const [vademecumQuery, setVademecumQuery] = useState("");
+  const [selectedVademecumMed, setSelectedVademecumMed] =
+    useState<ImssMedication | null>(null);
+  const [enabledPrintableFormatIds, setEnabledPrintableFormatIds] = useState<
+    string[]
+  >(() => PRINTABLE_CLINICAL_FORMATS.map((f) => f.id));
+  const [customPrintableLinks, setCustomPrintableLinks] = useState<
+    { id: string; title: string; url: string }[]
+  >([]);
+  const [editingPrintableTables, setEditingPrintableTables] = useState(false);
+  const [newTableTitle, setNewTableTitle] = useState("");
+  const [newTableUrl, setNewTableUrl] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [activePrintableFormatId, setActivePrintableFormatId] =
     useState<string>("cdc-pediatria");
@@ -917,10 +883,45 @@ export default function App() {
   });
   const [antecedentsText, setAntecedentsText] = useState(defaultAntecedents);
   const [gynecologicText, setGynecologicText] = useState(defaultGynecologic);
+  const [activeSheetTab, setActiveSheetTab] = useState<
+    "paciente" | "exploracion" | "cie10" | "recomendaciones"
+  >("paciente");
+  const [diabetesBox1Override, setDiabetesBox1Override] = useState<
+    string | null
+  >(null);
+  const [diabetesBox2Override, setDiabetesBox2Override] = useState<
+    string | null
+  >(null);
+  const [htaBox1Override, setHtaBox1Override] = useState<string | null>(null);
+  const [htaBox2Override, setHtaBox2Override] = useState<string | null>(null);
+  const [htaBox3Override, setHtaBox3Override] = useState<string | null>(null);
+  const [prenatalBoxOverride, setPrenatalBoxOverride] = useState<string | null>(
+    null,
+  );
+  const [generalBox1Override, setGeneralBox1Override] = useState<string | null>(
+    null,
+  );
+  const [generalBox2Override, setGeneralBox2Override] = useState<string | null>(
+    null,
+  );
+  const [currentDateStr, setCurrentDateStr] = useState("");
   const [motivoPadecimiento, setMotivoPadecimiento] = useState("");
+  const [quickPatientFields, setQuickPatientFields] = useState({
+    nombre: "Fulanita de tal",
+    sexo: "Femenina",
+    edad: "50",
+    nss: "0000000000",
+    motivo: "xxxxxxxxxxxx",
+    padecimiento: "xxxxxxxxxxxxxxxxx",
+  });
+  const [quickFieldsTouched, setQuickFieldsTouched] = useState(false);
+  const [patientNoteOverride, setPatientNoteOverride] = useState<string | null>(
+    null,
+  );
   const [paraclinicosText, setParaclinicosText] =
     useState(defaultParaclinicos);
   const [exploracion, setExploracion] = useState(defaultPhysicalExamText);
+  const [exploracionEdited, setExploracionEdited] = useState(false);
 
   const [diabetesFields, setDiabetesFields] = useState({
     hba1c: "",
@@ -1007,36 +1008,94 @@ export default function App() {
   const diagnosisSearchField = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    try {
-      const savedSession = localStorage.getItem("esd_auth_session");
-      if (savedSession === "logged_out") {
-        setIsAuthenticated(false);
-      }
-      const savedProfile =
-        localStorage.getItem("esd_registered_doctor_profile") ||
-        localStorage.getItem("esd_professional_profile");
-      if (savedProfile) {
-        const parsed = JSON.parse(savedProfile) as Partial<ProfessionalDetails>;
-        setProfessionalDetails({
-          nombre: parsed.nombre || defaultRegisteredDoctor.nombre,
-          matricula: parsed.matricula || defaultRegisteredDoctor.matricula,
-          cedula: parsed.cedula || defaultRegisteredDoctor.cedula,
-          unidad: parsed.unidad || defaultRegisteredDoctor.unidad,
-        });
-      }
-      const savedCalcs = localStorage.getItem("esd_enabled_calculators");
-      if (savedCalcs) {
-        const parsedCalcs = JSON.parse(savedCalcs) as string[];
-        const validCalcs = Array.isArray(parsedCalcs)
-          ? parsedCalcs.filter((id) => Boolean(SIDEBAR_CALCULATORS[id]))
-          : [];
-        if (validCalcs.length > 0) {
-          setEnabledCalcIds(validCalcs);
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setCurrentDateStr(new Date().toLocaleDateString("es-MX"));
+      try {
+        const savedSession = localStorage.getItem("esd_auth_session");
+        if (savedSession === "logged_out") {
+          setIsAuthenticated(false);
         }
+        const sharedProfile = readProfessionalProfile();
+        const savedProfile =
+          localStorage.getItem("esd_registered_doctor_profile") ||
+          localStorage.getItem("esd_professional_profile");
+        const parsed = savedProfile
+          ? (JSON.parse(savedProfile) as Partial<ProfessionalDetails>)
+          : {};
+        const customExam =
+          sharedProfile?.exploracionPersonalizada ||
+          parsed.exploracionPersonalizada ||
+          "";
+        const mergedProfile: ProfessionalDetails = {
+          nombre:
+            sharedProfile?.nombre ||
+            parsed.nombre ||
+            defaultRegisteredDoctor.nombre,
+          matricula:
+            sharedProfile?.matricula ||
+            parsed.matricula ||
+            defaultRegisteredDoctor.matricula,
+          cedula:
+            sharedProfile?.cedula ||
+            parsed.cedula ||
+            defaultRegisteredDoctor.cedula,
+          unidad:
+            sharedProfile?.unidad ||
+            parsed.unidad ||
+            defaultRegisteredDoctor.unidad,
+          exploracionPersonalizada: customExam,
+          pacientePlantilla:
+            sharedProfile?.pacientePlantilla || parsed.pacientePlantilla || "",
+          padecimientoPlantilla:
+            sharedProfile?.padecimientoPlantilla ||
+            parsed.padecimientoPlantilla ||
+            "",
+        };
+        setProfessionalDetails(mergedProfile);
+        if (customExam.trim()) {
+          setExploracion(customExam.trim());
+        }
+        const savedCalcs = localStorage.getItem("esd_enabled_calculators");
+        if (savedCalcs) {
+          const parsedCalcs = JSON.parse(savedCalcs) as string[];
+          const validCalcs = Array.isArray(parsedCalcs)
+            ? parsedCalcs.filter((id) => Boolean(SIDEBAR_CALCULATORS[id]))
+            : [];
+          if (validCalcs.length > 0) {
+            setEnabledCalcIds(validCalcs);
+          }
+        }
+        const savedPrintableIds = localStorage.getItem(
+          "esd_enabled_printable_formats",
+        );
+        if (savedPrintableIds) {
+          const parsedIds = JSON.parse(savedPrintableIds) as string[];
+          if (Array.isArray(parsedIds)) {
+            setEnabledPrintableFormatIds(parsedIds);
+          }
+        }
+        const savedCustomLinks = localStorage.getItem(
+          "esd_custom_printable_links",
+        );
+        if (savedCustomLinks) {
+          const parsedLinks = JSON.parse(savedCustomLinks) as {
+            id: string;
+            title: string;
+            url: string;
+          }[];
+          if (Array.isArray(parsedLinks)) {
+            setCustomPrintableLinks(parsedLinks);
+          }
+        }
+      } catch {
+        // Conservar datos registrados por defecto si localStorage no está disponible
       }
-    } catch {
-      // Conservar datos registrados por defecto si localStorage no está disponible
-    }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1045,6 +1104,16 @@ export default function App() {
         "esd_registered_doctor_profile",
         JSON.stringify(professionalDetails),
       );
+      saveProfessionalProfile({
+        nombre: professionalDetails.nombre,
+        matricula: professionalDetails.matricula,
+        cedula: professionalDetails.cedula,
+        unidad: professionalDetails.unidad,
+        exploracionPersonalizada:
+          professionalDetails.exploracionPersonalizada || "",
+        pacientePlantilla: professionalDetails.pacientePlantilla || "",
+        padecimientoPlantilla: professionalDetails.padecimientoPlantilla || "",
+      });
     } catch {
       // Ignorar errores de almacenamiento local
     }
@@ -1214,6 +1283,49 @@ export default function App() {
     .filter(Boolean)
     .join(" | ");
 
+  const defaultPatientLine = `${quickPatientFields.nombre}, de sexo ${quickPatientFields.sexo}, de ${quickPatientFields.edad} años de edad, con número de seguridad social ${quickPatientFields.nss}, motivo de consulta: ${quickPatientFields.motivo}`;
+  const patientTextForNote = patientIdentity.trim()
+    ? patientIdentity.trim()
+    : !quickFieldsTouched && professionalDetails.pacientePlantilla.trim()
+      ? professionalDetails.pacientePlantilla.trim()
+      : defaultPatientLine || DEFAULT_PATIENT_TEMPLATE;
+
+  const defaultPadecimientoLine = `Refiere inicia su padecimiento actual ${quickPatientFields.padecimiento} resto preguntado y negado`;
+  const padecimientoTextForNote = motivoPadecimiento.trim()
+    ? motivoPadecimiento.trim()
+    : !quickFieldsTouched && professionalDetails.padecimientoPlantilla.trim()
+      ? professionalDetails.padecimientoPlantilla.trim()
+      : defaultPadecimientoLine || DEFAULT_PADECIMIENTO_TEMPLATE;
+
+  const generatedPatientNote = [
+    "PACIENTE: " + patientTextForNote,
+    vitalsConcatenated ? "SIGNOS VITALES: " + vitalsConcatenated : "",
+    "PADECIMIENTO ACTUAL: " + padecimientoTextForNote,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const effectivePatientNote = patientNoteOverride ?? generatedPatientNote;
+
+  const handlePatientNoteChange = (value: string) => {
+    setPatientNoteOverride(value);
+    const padecimientoMatch = value.match(/PADECIMIENTO ACTUAL:\s*([\s\S]*)$/i);
+    if (padecimientoMatch) {
+      setMotivoPadecimiento(padecimientoMatch[1].trim());
+    }
+  };
+
+  const effectiveExploracion = vitalsConcatenated
+    ? exploracion.startsWith("SIGNOS VITALES:")
+      ? exploracion
+      : `SIGNOS VITALES: ${vitalsConcatenated}\n\n${exploracion}`
+    : exploracion;
+
+  const handleExploracionChange = (value: string) => {
+    setExploracionEdited(true);
+    setExploracion(value);
+  };
+
   const antecedentsConcatenated =
     sexo === "masculino"
       ? antecedentsText
@@ -1277,20 +1389,14 @@ export default function App() {
     " | Unidad: " +
     professionalDetails.unidad;
 
-  // 1) FORMATO DIABETES MELLITUS (2 cuadros no modificables)
+  // 1) FORMATO DIABETES MELLITUS (2 cuadros modificables con la información de la página inicial)
   const diabetesBox1 = [
-    "=== CUADRO 1: DATOS DEL PACIENTE, SIGNOS VITALES, ANTECEDENTES, PADECIMIENTO ACTUAL Y PARACLÍNICOS ===",
-    "PACIENTE: " + (patientIdentity || "No especificado"),
-    "SIGNOS VITALES Y SOMATOMETRÍA: " +
-      (vitalsConcatenated || "Sin registro"),
-    "\nANTECEDENTES:\n" + antecedentsConcatenated,
-    "\nPADECIMIENTO ACTUAL:\n" +
-      (motivoPadecimiento || "Acude a control metabólico de Diabetes Mellitus."),
-    "\nPARACLÍNICOS:\n" + (paraclinicosText || defaultParaclinicos),
+    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    effectivePatientNote,
     diabetesFields.glucosaAyuno ||
     diabetesFields.hba1c ||
     diabetesFields.tfge
-      ? "Control glucémico/renal: Glucosa ayuno " +
+      ? "\nControl glucémico/renal: Glucosa ayuno " +
         (diabetesFields.glucosaAyuno || "S/D") +
         " mg/dL | HbA1c " +
         (diabetesFields.hba1c || "S/D") +
@@ -1302,60 +1408,55 @@ export default function App() {
     .join("\n");
 
   const diabetesBox2 = [
-    "=== CUADRO 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS, TRATAMIENTO, INDICACIONES Y MÉDICO ===",
-    "EXPLORACIÓN FÍSICA:\n" + exploracion,
-    "Revisión integral de pies: " + diabetesFields.revisionPies,
+    "=== CUADRO 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
+    "EXPLORACIÓN FÍSICA:\n" + effectiveExploracion,
+    "\nRevisión integral de pies: " + diabetesFields.revisionPies,
     "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
-    "\nTRATAMIENTO MÉDICO:\n" + medicationsConcatenated,
-    "\nINDICACIONES Y SIGNOS DE ALARMA:\n" + finalIndicationsText,
-    "\nPRONÓSTICO: " + prognosis + " | SEGUIMIENTO: " + seguimientoText,
+    "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
+      finalIndicationsText,
     "\n" + doctorFooterConcatenated,
   ].join("\n");
 
-  // 2) FORMATO HIPERTENSIÓN ARTERIAL (3 cuadros no modificables)
-  const htaBox1 = [
-    "=== CUADRO 1: INFORMACIÓN DEL PACIENTE, ANTECEDENTES, PADECIMIENTO ACTUAL Y PARACLÍNICOS ===",
-    "PACIENTE: " + (patientIdentity || "No especificado"),
-    "\nANTECEDENTES:\n" + antecedentsConcatenated,
-    "\nPADECIMIENTO ACTUAL:\n" +
-      (motivoPadecimiento ||
-        "Acude a control y seguimiento de Hipertensión Arterial Sistémica."),
-    "\nPARACLÍNICOS:\n" + (paraclinicosText || defaultParaclinicos),
-  ].join("\n");
+  const effectiveDiabetesBox1 = diabetesBox1Override ?? diabetesBox1;
+  const effectiveDiabetesBox2 = diabetesBox2Override ?? diabetesBox2;
 
-  const htaBox2 = [
-    "=== CUADRO 2: SIGNOS VITALES Y EXPLORACIÓN FÍSICA ===",
-    "SIGNOS VITALES Y SOMATOMETRÍA: " +
-      (vitalsConcatenated || "Sin registro"),
+  // 2) FORMATO HIPERTENSIÓN ARTERIAL (3 cuadros modificables e imprimibles con la información de la página inicial)
+  const htaBox1 = [
+    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    effectivePatientNote,
     htaFields.taDomiciliaria
-      ? "Promedio TA domiciliaria: " + htaFields.taDomiciliaria
+      ? "\nPromedio TA domiciliaria: " + htaFields.taDomiciliaria
       : "",
-    "\nEXPLORACIÓN FÍSICA:\n" + exploracion,
   ]
     .filter(Boolean)
     .join("\n");
 
+  const htaBox2 = [
+    "=== CUADRO 2: EXPLORACIÓN FÍSICA ===",
+    effectiveExploracion,
+  ].join("\n");
+
   const htaBox3 = [
-    "=== CUADRO 3: RESTO DE LA INFORMACIÓN DE LA CONSULTA ===",
+    "=== CUADRO 3: DIAGNÓSTICOS, RECOMENDACIONES Y SEGUIMIENTO ===",
     "Riesgo cardiovascular: " +
       htaFields.riesgoCardiovascular +
       " | Daño a órgano blanco: " +
       htaFields.danoOrganoBlanco,
-    "Adherencia terapéutica: " + htaFields.adherencia,
     "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
-    "\nTRATAMIENTO MÉDICO:\n" + medicationsConcatenated,
-    "\nINDICACIONES Y SIGNOS DE ALARMA:\n" + finalIndicationsText,
-    "\nPRONÓSTICO: " + prognosis + " | SEGUIMIENTO: " + seguimientoText,
+    "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
+      finalIndicationsText,
     "\n" + doctorFooterConcatenated,
   ].join("\n");
 
-  // 3) FORMATO CONTROL PRENATAL (1 solo cuadro no modificable con toda la información en orden)
+  const effectiveHtaBox1 = htaBox1Override ?? htaBox1;
+  const effectiveHtaBox2 = htaBox2Override ?? htaBox2;
+  const effectiveHtaBox3 = htaBox3Override ?? htaBox3;
+
+  // 3) FORMATO CONTROL PRENATAL (1 solo cuadro modificable e imprimible con toda la información concatenada)
   const prenatalSingleBox = [
-    "=== NOTA INTEGRAL DE VIGILANCIA Y CONTROL PRENATAL ===",
-    "FECHA: " + new Date().toLocaleDateString("es-MX"),
-    "PACIENTE: " + (patientIdentity || "No especificado"),
-    "SIGNOS VITALES Y SOMATOMETRÍA: " +
-      (vitalsConcatenated || "Sin registro"),
+    "=== NOTA INTEGRAL DE CONTROL PRENATAL ===",
+    "FECHA: " + currentDateStr,
+    "\n" + effectivePatientNote,
     "CONTROL OBSTÉTRICO: FUM: " +
       (prenatalFields.fum || "S/D") +
       " | SDG: " +
@@ -1369,17 +1470,32 @@ export default function App() {
       " cm | Movimientos fetales: " +
       prenatalFields.movimientosFetales,
     "SIGNOS DE ALARMA OBSTÉTRICA: " + prenatalFields.signosAlarmaObstetrica,
-    "\nANTECEDENTES:\n" + antecedentsConcatenated,
-    "\nPADECIMIENTO ACTUAL:\n" +
-      (motivoPadecimiento || "Acude a consulta de control prenatal."),
-    "\nPARACLÍNICOS:\n" + (paraclinicosText || defaultParaclinicos),
-    "\nEXPLORACIÓN FÍSICA:\n" + exploracion,
+    "\nEXPLORACIÓN FÍSICA:\n" + effectiveExploracion,
     "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
-    "\nTRATAMIENTO Y SUPLEMENTACIÓN:\n" + medicationsConcatenated,
-    "\nINDICACIONES Y SIGNOS DE ALARMA:\n" + finalIndicationsText,
-    "\nPRONÓSTICO: " + prognosis + " | SEGUIMIENTO: " + seguimientoText,
+    "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
+      finalIndicationsText,
     "\n" + doctorFooterConcatenated,
   ].join("\n");
+
+  const effectivePrenatalBox = prenatalBoxOverride ?? prenatalSingleBox;
+
+  // 4) FORMATO CONSULTA GENERAL (2 cuadros modificables e imprimibles como Diabetes)
+  const generalBox1 = [
+    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    effectivePatientNote,
+  ].join("\n");
+
+  const generalBox2 = [
+    "=== CUADRO 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
+    "EXPLORACIÓN FÍSICA:\n" + effectiveExploracion,
+    "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
+    "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
+      finalIndicationsText,
+    "\n" + doctorFooterConcatenated,
+  ].join("\n");
+
+  const effectiveGeneralBox1 = generalBox1Override ?? generalBox1;
+  const effectiveGeneralBox2 = generalBox2Override ?? generalBox2;
 
   const copyTextHelper = (text: string, label: string) => {
     try {
@@ -1418,8 +1534,8 @@ export default function App() {
       .map(
         (b) =>
           `<div style="margin-bottom:18px;">
-            <h3 style="font-size:13px;color:#123C50;margin:0 0 6px 0;text-transform:uppercase;">${b.heading}</h3>
-            <textarea readonly style="width:100%;min-height:190px;padding:12px;border:1.5px solid #123C50;border-radius:10px;font-family:monospace;font-size:12px;color:#123C50;background:#F8FBFA;white-space:pre-wrap;">${b.content.replace(/</g, "&lt;")}</textarea>
+            <h3 style="font-size:13px;color:#0F2D3D;margin:0 0 6px 0;text-transform:uppercase;">${b.heading}</h3>
+            <textarea readonly style="width:100%;min-height:190px;padding:12px;border:1.5px solid #0F2D3D;border-radius:10px;font-family:monospace;font-size:12px;color:#0F2D3D;background:#F8FBFA;white-space:pre-wrap;">${b.content.replace(/</g, "&lt;")}</textarea>
           </div>`,
       )
       .join("");
@@ -1429,10 +1545,10 @@ export default function App() {
         <meta charset="utf-8" />
         <title>${title}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 24px; color: #123C50; background: #F4F8F7; }
+          body { font-family: Arial, sans-serif; margin: 24px; color: #0F2D3D; background: #F6FAF8; }
           .toolbar { display: flex; gap: 10px; margin-bottom: 18px; }
-          button { background: #123C50; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-          button.secondary { background: #18A69A; }
+          button { background: #0F2D3D; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+          button.secondary { background: #0D9488; }
           @media print { .toolbar { display: none; } body { background: white; margin: 0; } }
         </style>
       </head>
@@ -1459,11 +1575,11 @@ export default function App() {
         <meta charset="utf-8" />
         <title>${fmt.title} - TU SALUD DIGITAL</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 22px; color: #123C50; }
+          body { font-family: Arial, sans-serif; margin: 22px; color: #0F2D3D; }
           .toolbar { display: flex; gap: 10px; margin-bottom: 14px; }
-          button { background: #123C50; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-          button.secondary { background: #18A69A; }
-          .header { border-bottom: 2px solid #123C50; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+          button { background: #0F2D3D; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+          button.secondary { background: #0D9488; }
+          .header { border-bottom: 2px solid #0F2D3D; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; }
           @media print { .toolbar { display: none; } body { margin: 8px; } }
         </style>
       </head>
@@ -1475,7 +1591,7 @@ export default function App() {
         <div class="header">
           <div>
             <h2 style="margin:0;font-size:17px;">TU SALUD DIGITAL · ${fmt.title}</h2>
-            <p style="margin:2px 0 0 0;font-size:11px;color:#18A69A;font-weight:bold;">${fmt.source}</p>
+            <p style="margin:2px 0 0 0;font-size:11px;color:#0D9488;font-weight:bold;">${fmt.source}</p>
           </div>
           <div style="text-align:right;font-size:11px;">
             <strong>${professionalDetails.nombre}</strong> · Céd. ${professionalDetails.cedula}<br/>
@@ -1496,7 +1612,7 @@ export default function App() {
     value = measurements[name],
     readOnly = false,
   ) => (
-    <label key={name} className="block text-sm font-semibold text-[#123C50]">
+    <label key={name} className="block text-sm font-semibold text-[#0F2D3D]">
       {label}
       <span className="mt-2 flex items-center gap-2">
         <input
@@ -1641,11 +1757,34 @@ export default function App() {
     setAntecedentsText(defaultAntecedents);
     setGynecologicText(defaultGynecologic);
     setMotivoPadecimiento("");
+    setPatientNoteOverride(null);
+    setQuickPatientFields({
+      nombre: "Fulanita de tal",
+      sexo: "Femenina",
+      edad: "50",
+      nss: "0000000000",
+      motivo: "xxxxxxxxxxxx",
+      padecimiento: "xxxxxxxxxxxxxxxxx",
+    });
+    setQuickFieldsTouched(false);
     setParaclinicosText(defaultParaclinicos);
-    setExploracion(defaultPhysicalExamText);
+    setExploracion(
+      professionalDetails.exploracionPersonalizada.trim() ||
+        defaultPhysicalExamText,
+    );
+    setExploracionEdited(false);
     setSelectedDiagnoses([]);
     setPrescribedMedications([]);
     setIndicationsOverride(null);
+    setDiabetesBox1Override(null);
+    setDiabetesBox2Override(null);
+    setHtaBox1Override(null);
+    setHtaBox2Override(null);
+    setHtaBox3Override(null);
+    setPrenatalBoxOverride(null);
+    setGeneralBox1Override(null);
+    setGeneralBox2Override(null);
+    setActiveSheetTab("paciente");
     setManualQrCodeInput("");
     setQrStatus("");
     setSaveMessage(
@@ -1701,13 +1840,15 @@ export default function App() {
         "sin-especificar": "Sin especificar",
       };
       setPatientIdentity(
-        [
-          "Nombre: " + data.nombre,
-          "Fecha de nacimiento: " + data.fechaNacimiento,
-          "Edad: " + age + " años",
-          "Sexo: " + sexLabel[data.sexo],
-        ].join(", "),
+        `${data.nombre}, de sexo ${sexLabel[data.sexo]}, de ${age} años de edad, con número de seguridad social 0000000000, motivo de consulta: ${quickPatientFields.motivo}`,
       );
+      setQuickPatientFields((prev) => ({
+        ...prev,
+        nombre: data.nombre,
+        sexo: sexLabel[data.sexo],
+        edad: String(age),
+      }));
+      setPatientNoteOverride(null);
       setSexo(data.sexo);
       setMeasurements((current) => ({
         ...current,
@@ -1828,9 +1969,9 @@ export default function App() {
   // PANTALLA 1: INICIO DE SESIÓN Y REGISTRO DE MÉDICO
   if (!isAuthenticated) {
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-[#F4F8F7] p-4 text-[#123C50]">
-        <div className="w-full max-w-md overflow-hidden rounded-3xl border border-[#DCE9E6] bg-white shadow-xl">
-          <div className="bg-gradient-to-r from-[#123C50] to-[#18A69A] px-6 py-6 text-white">
+      <main className="flex min-h-screen w-full items-center justify-center bg-[#F6FAF8] p-4 text-[#0F2D3D]">
+        <div className="w-full max-w-md overflow-hidden rounded-3xl border border-[#D6E6E1] bg-white shadow-xl">
+          <div className="bg-gradient-to-r from-[#0F2D3D] to-[#0D9488] px-6 py-6 text-white">
             <div className="flex items-center gap-3.5">
               <BrandLogo size="lg" />
               <div>
@@ -1845,7 +1986,7 @@ export default function App() {
           </div>
 
           <div className="p-6">
-            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-[#F4F8F7] p-1">
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-[#F6FAF8] p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -1855,8 +1996,8 @@ export default function App() {
                 className={
                   "rounded-lg py-2 text-xs font-extrabold transition " +
                   (authTab === "login"
-                    ? "bg-[#123C50] text-white shadow-sm"
-                    : "text-[#123C50] hover:bg-[#E9F4F2]")
+                    ? "bg-[#0F2D3D] text-white shadow-sm"
+                    : "text-[#0F2D3D] hover:bg-[#EAF4F1]")
                 }
               >
                 Iniciar Sesión
@@ -1870,8 +2011,8 @@ export default function App() {
                 className={
                   "rounded-lg py-2 text-xs font-extrabold transition " +
                   (authTab === "register"
-                    ? "bg-[#18A69A] text-white shadow-sm"
-                    : "text-[#123C50] hover:bg-[#E9F4F2]")
+                    ? "bg-[#0D9488] text-white shadow-sm"
+                    : "text-[#0F2D3D] hover:bg-[#EAF4F1]")
                 }
               >
                 Registro de Médico
@@ -1903,14 +2044,14 @@ export default function App() {
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-[#18A69A] py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-[#123C50]"
+                  className="w-full rounded-xl bg-[#0D9488] py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-[#0F2D3D]"
                 >
                   Entrar a Hoja de Consulta
                 </button>
               </form>
             ) : (
               <form onSubmit={handleRegisterSubmit} className="mt-4 space-y-3">
-                <p className="rounded-xl bg-[#F4F8F7] p-2.5 text-xs text-slate-600">
+                <p className="rounded-xl bg-[#F6FAF8] p-2.5 text-xs text-slate-600">
                   Tus datos se precargarán automáticamente en todas tus notas médicas y recetas:
                 </p>
                 {DOCTOR_PROFILE_FIELDS.map((item) => (
@@ -1946,7 +2087,7 @@ export default function App() {
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-[#123C50] py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-[#18A69A]"
+                  className="w-full rounded-xl bg-[#0F2D3D] py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-[#0D9488]"
                 >
                   Registrarme y Precargar mis Datos
                 </button>
@@ -1959,48 +2100,41 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-[#F4F8F7] text-[#123C50]">
-      <header className="sticky top-0 z-20 border-b border-[#DCE9E6] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur print:hidden sm:px-5">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandLogo size="md" />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-base font-black tracking-tight text-[#123C50] sm:text-lg">
-                  TU <span className="text-[#18A69A]">SALUD DIGITAL</span>
+    <main className="min-h-dvh w-full overflow-x-hidden bg-[#F6FAF8] text-[#0F2D3D]">
+      <header className="sticky top-0 z-20 border-b border-[#D6E6E1] bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur print:hidden">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
+            <BrandLogo size="sm" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h1 className="truncate text-sm font-black tracking-tight text-[#0F2D3D]">
+                  ECO <span className="text-[#0D9488]">SALUD DIGITAL</span>
                 </h1>
-                <span className="rounded-full bg-[#E9F4F2] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#16877F]">
-                  Versión para Profesionales · Consulta Externa
+                <span className="rounded-full bg-[#EAF4F1] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-[#0F766E]">
+                  Profesionales
                 </span>
               </div>
-              <p className="truncate text-xs font-medium text-slate-500">
+              <p className="truncate text-[11px] font-medium text-slate-500">
                 {professionalDetails.nombre} · Céd. {professionalDetails.cedula} ·{" "}
                 {professionalDetails.unidad}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setSidebarOpen((open) => !open)}
-              className="flex items-center gap-1.5 rounded-xl bg-[#18A69A] px-3.5 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#123C50]"
+              onClick={() => setActiveWindow("qr")}
+              title="Identificación del paciente por QR"
+              className="rounded-lg bg-[#0284C7] px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition hover:bg-[#0F2D3D]"
             >
-              <span>{sidebarOpen ? "Ocultar Barra →" : "☰ Herramientas y Formatos"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveWindow("herramientas")}
-              title="Personalizar Herramientas"
-              className="rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] px-2.5 py-2 text-xs font-bold text-[#123C50] transition hover:border-[#18A69A] hover:bg-[#E9F4F2]"
-            >
-              ⚙ Herramientas
+              📷 QR Paciente
             </button>
             <button
               type="button"
               onClick={() => setActiveWindow("perfil")}
-              title="Personalizar Perfil del Médico"
-              className="rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] px-2.5 py-2 text-xs font-bold text-[#123C50] transition hover:border-[#18A69A] hover:bg-[#E9F4F2]"
+              title="Personalizar Perfil y Herramientas"
+              className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2.5 py-1.5 text-[11px] font-bold text-[#0F2D3D] transition hover:border-[#0D9488] hover:bg-[#EAF4F1]"
             >
               👤 Perfil
             </button>
@@ -2008,7 +2142,7 @@ export default function App() {
               type="button"
               onClick={handleLogout}
               title="Cerrar Sesión"
-              className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
               Salir
             </button>
@@ -2016,908 +2150,446 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl px-2.5 py-3 sm:px-4 sm:py-5">
+      {/* PESTAÑA LATERAL DERECHA PARA DESPLEGAR BARRA DE HERRAMIENTAS */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Abrir barra de herramientas"
+          className="fixed right-0 top-1/2 z-30 -translate-y-1/2 rounded-l-2xl border border-r-0 border-[#0D9488] bg-[#0F2D3D] px-2 py-4 text-[11px] font-extrabold tracking-wide text-white shadow-lg transition hover:bg-[#0D9488] print:hidden [writing-mode:vertical-rl] rotate-180"
+        >
+          ☰ Herramientas
+        </button>
+      )}
+
+      <div className="mx-auto w-full max-w-5xl px-2 py-2">
         <form
           ref={formRef}
-          className="space-y-4"
+          className="space-y-2"
           onSubmit={(event) => event.preventDefault()}
         >
           <fieldset
             disabled={finalized && !correctionMode}
-            className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-12"
+            className="min-w-0 space-y-2"
           >
-            <section
-              id="datos-paciente"
-              className={sectionClassName + " xl:col-span-5"}
+            {/* BARRA DE PESTAÑAS COMPACTA */}
+            <div
+              role="tablist"
+              aria-label="Secciones de la nota clínica"
+              className="grid grid-cols-2 gap-1 rounded-xl border border-[#D6E6E1] bg-white p-1 shadow-sm sm:grid-cols-4 print:hidden"
             >
-              <SectionHeading
-                number="01"
-                variant="teal"
-                note="Escanea el QR del paciente o pega su código ESD1 de Telemedicina."
-              >
-                Datos del Paciente y QR
-              </SectionHeading>
-
-              <div className="mb-3 space-y-2.5 rounded-xl border border-[#DCE9E6] bg-[#F4F8FD] p-3 print:hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#2456C7]">
-                    Conexión Paciente (QR / Remoto)
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (qrScanning) {
-                          stopQrReader();
-                        } else {
-                          startQrReader();
-                        }
-                      }}
-                      className="rounded-lg bg-[#2456C7] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition hover:bg-[#123C50]"
-                    >
-                      {qrScanning ? "Detener cámara" : "📷 Escanear QR"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.open("/pacientes/qr", "_blank", "noopener,noreferrer");
-                      }}
-                      className="rounded-lg border border-[#DCE9E6] bg-white px-2.5 py-1 text-[11px] font-bold text-[#16877F] hover:bg-[#E9F4F2]"
-                    >
-                      Link QR ↗
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    value={manualQrCodeInput}
-                    onChange={(e) => setManualQrCodeInput(e.target.value)}
-                    placeholder="Pegar código ESD1... (Telemedicina)"
-                    className="min-w-0 flex-1 rounded-lg border border-[#DCE9E6] bg-white px-2.5 py-1.5 text-xs text-[#123C50] outline-none focus:border-[#18A69A]"
-                  />
+              {(
+                [
+                  { id: "paciente", label: "1. Paciente y Padecimiento" },
+                  { id: "exploracion", label: "2. Exploración Física" },
+                  {
+                    id: "cie10",
+                    label:
+                      selectedDiagnoses.length > 0
+                        ? `3. CIE-10 (${selectedDiagnoses.length})`
+                        : "3. Diagnóstico CIE-10",
+                  },
+                  { id: "recomendaciones", label: "4. Recomendaciones" },
+                ] as const
+              ).map((tab) => {
+                const isActive = activeSheetTab === tab.id;
+                return (
                   <button
+                    key={tab.id}
                     type="button"
-                    onClick={() => {
-                      applyMeasurementQr(manualQrCodeInput);
-                    }}
-                    className="shrink-0 rounded-lg bg-[#123C50] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#18A69A]"
-                  >
-                    Cargar
-                  </button>
-                </div>
-
-                <div id="qr-lectura" aria-live="polite">
-                  <video
-                    ref={qrVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveSheetTab(tab.id)}
                     className={
-                      "max-h-40 w-full rounded-lg bg-black object-contain " +
-                      (qrScanning ? "block" : "hidden")
+                      "rounded-lg px-2 py-1.5 text-[11px] font-extrabold transition " +
+                      (isActive
+                        ? "bg-[#0F2D3D] text-white shadow-sm"
+                        : "bg-[#F6FAF8] text-[#0F2D3D] hover:bg-[#EAF4F1]")
                     }
-                  />
-                  {qrStatus && (
-                    <p
-                      className="mt-1 text-xs font-semibold text-[#123C50]"
-                      role="status"
-                    >
-                      {qrStatus}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <label
-                className="block text-xs font-bold uppercase tracking-wide text-[#123C50]"
-                htmlFor="identificacionPaciente"
-              >
-                Nombre, Edad, NSS / Folio y Sexo
-                <textarea
-                  id="identificacionPaciente"
-                  className={inputClassName + " resize-y"}
-                  name="identificacionPaciente"
-                  rows={3}
-                  value={patientIdentity}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setPatientIdentity(value);
-                    const normalized = normalizeSearchText(value);
-                    if (/\bmasculino\b|\bhombre\b/.test(normalized))
-                      setSexo("masculino");
-                    else if (/\bfemenino\b|\bmujer\b/.test(normalized))
-                      setSexo("femenino");
-                  }}
-                  placeholder="Ej. María González Ruiz, 54 años, NSS 1234-56-7890-1, Femenino"
-                />
-              </label>
-            </section>
-
-            <section
-              id="signos-vitales"
-              className={sectionClassName + " xl:col-span-7"}
-            >
-              <SectionHeading
-                number="02"
-                variant="navy"
-                note="El IMC se calcula automáticamente al ingresar Peso y Talla."
-              >
-                Signos Vitales y Somatometría
-              </SectionHeading>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
-                {measurementField("TA Sistólica", "presionSistolica", "mmHg")}
-                {measurementField("TA Diastólica", "presionDiastolica", "mmHg")}
-                {measurementField("Frec. Cardiaca", "frecuenciaCardiaca", "lpm")}
-                {measurementField(
-                  "Frec. Resp.",
-                  "frecuenciaRespiratoria",
-                  "rpm",
-                )}
-                {measurementField("Temperatura", "temperatura", "°C")}
-                {measurementField("SpO2", "saturacionOxigeno", "%")}
-                {measurementField("Peso", "peso", "kg")}
-                {measurementField("Talla", "talla", "cm")}
-                {measurementField("IMC (Auto)", "imc", "kg/m²", bmi, true)}
-                {measurementField("Glucosa cap.", "glucosaCapilar", "mg/dL")}
-              </div>
-            </section>
-
-            {clinicalFormat === "diabetes" && (
-              <section className={sectionClassName + " xl:col-span-12"}>
-                <SectionHeading
-                  number="DM2"
-                  variant="teal"
-                  note="Parámetros adicionales para la Hoja de Control de Diabetes Mellitus."
-                >
-                  Control Metabólico: Diabetes Mellitus
-                </SectionHeading>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <Field
-                    label="Glucosa plasmática en ayuno (mg/dL)"
-                    name="dmGlucosaAyuno"
-                    value={diabetesFields.glucosaAyuno}
-                    onChange={(v) =>
-                      setDiabetesFields((p) => ({ ...p, glucosaAyuno: v }))
-                    }
-                  />
-                  <Field
-                    label="Hemoglobina Glucosilada HbA1c (%)"
-                    name="dmHba1c"
-                    value={diabetesFields.hba1c}
-                    onChange={(v) =>
-                      setDiabetesFields((p) => ({ ...p, hba1c: v }))
-                    }
-                  />
-                  <Field
-                    label="TFGe CKD-EPI (mL/min/1.73m²)"
-                    name="dmTfge"
-                    value={diabetesFields.tfge}
-                    onChange={(v) =>
-                      setDiabetesFields((p) => ({ ...p, tfge: v }))
-                    }
-                  />
-                  <div className="sm:col-span-3">
-                    <Field
-                      label="Exploración de pies (pulsos pedios, monofilamento, sensibilidad)"
-                      name="dmPies"
-                      value={diabetesFields.revisionPies}
-                      onChange={(v) =>
-                        setDiabetesFields((p) => ({ ...p, revisionPies: v }))
-                      }
-                    />
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {clinicalFormat === "hipertension" && (
-              <section className={sectionClassName + " xl:col-span-12"}>
-                <SectionHeading
-                  number="HTA"
-                  variant="navy"
-                  note="Parámetros adicionales para la Hoja de Control de Hipertensión Arterial."
-                >
-                  Control Cardiovascular: Hipertensión Arterial
-                </SectionHeading>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <Field
-                    label="Promedio de bitácora de TA domiciliaria (mmHg)"
-                    name="htaBitacora"
-                    placeholder="Ej. 125/78 mmHg"
-                    value={htaFields.taDomiciliaria}
-                    onChange={(v) =>
-                      setHtaFields((p) => ({ ...p, taDomiciliaria: v }))
-                    }
-                  />
-                  <Field
-                    label="Riesgo cardiovascular estimado"
-                    name="htaRiesgo"
-                    value={htaFields.riesgoCardiovascular}
-                    onChange={(v) =>
-                      setHtaFields((p) => ({ ...p, riesgoCardiovascular: v }))
-                    }
-                  />
-                  <Field
-                    label="Interrogatorio de daño a órgano blanco"
-                    name="htaOrganoBlanco"
-                    value={htaFields.danoOrganoBlanco}
-                    onChange={(v) =>
-                      setHtaFields((p) => ({ ...p, danoOrganoBlanco: v }))
-                    }
-                  />
-                  <Field
-                    label="Adherencia y tolerancia a antihipertensivos"
-                    name="htaAdherencia"
-                    value={htaFields.adherencia}
-                    onChange={(v) =>
-                      setHtaFields((p) => ({ ...p, adherencia: v }))
-                    }
-                  />
-                </div>
-              </section>
-            )}
-
-            {clinicalFormat === "prenatal" && (
-              <section className={sectionClassName + " xl:col-span-12"}>
-                <SectionHeading
-                  number="CPN"
-                  variant="blue"
-                  note="Ingresa la FUM para calcular automáticamente Semanas de Gestación (SDG) y Fecha Probable de Parto (FPP)."
-                >
-                  Vigilancia Materno-Fetal: Control Prenatal
-                </SectionHeading>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4">
-                  <Field
-                    label="Fecha de Última Menstruación (FUM)"
-                    name="cpnFum"
-                    type="date"
-                    value={prenatalFields.fum}
-                    onChange={handleFumChange}
-                  />
-                  <Field
-                    label="Semanas de Gestación (SDG)"
-                    name="cpnSdg"
-                    value={prenatalFields.sdg}
-                    onChange={(v) =>
-                      setPrenatalFields((p) => ({ ...p, sdg: v }))
-                    }
-                  />
-                  <Field
-                    label="Fecha Probable de Parto (FPP)"
-                    name="cpnFpp"
-                    value={prenatalFields.fpp}
-                    onChange={(v) =>
-                      setPrenatalFields((p) => ({ ...p, fpp: v }))
-                    }
-                  />
-                  <Field
-                    label="Frecuencia Cardiaca Fetal (lpm)"
-                    name="cpnFcf"
-                    placeholder="Ej. 145 lpm"
-                    value={prenatalFields.fcf}
-                    onChange={(v) =>
-                      setPrenatalFields((p) => ({ ...p, fcf: v }))
-                    }
-                  />
-                  <Field
-                    label="Fondo Uterino AFU (cm)"
-                    name="cpnAfu"
-                    placeholder="Ej. 24 cm"
-                    value={prenatalFields.fondoUterino}
-                    onChange={(v) =>
-                      setPrenatalFields((p) => ({ ...p, fondoUterino: v }))
-                    }
-                  />
-                  <Field
-                    label="Movimientos fetales"
-                    name="cpnMovimientos"
-                    value={prenatalFields.movimientosFetales}
-                    onChange={(v) =>
-                      setPrenatalFields((p) => ({
-                        ...p,
-                        movimientosFetales: v,
-                      }))
-                    }
-                  />
-                  <div className="sm:col-span-2">
-                    <Field
-                      label="Signos de alarma obstétrica"
-                      name="cpnAlarma"
-                      value={prenatalFields.signosAlarmaObstetrica}
-                      onChange={(v) =>
-                        setPrenatalFields((p) => ({
-                          ...p,
-                          signosAlarmaObstetrica: v,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </section>
-            )}
-
-            <section
-              id="antecedentes"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="03"
-                variant="teal"
-                note="Plantilla precargada editable; se actualiza automáticamente al leer el QR."
-              >
-                Antecedentes Personales y Familiares
-              </SectionHeading>
-              <textarea
-                id="antecedentes-unificados"
-                className={inputClassName + " resize-y"}
-                name="antecedentes"
-                rows={7}
-                value={antecedentsText}
-                onChange={(event) => setAntecedentsText(event.target.value)}
-              />
-            </section>
-
-            <section
-              id="antecedentes-gineco"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="03B"
-                variant="teal"
-                note="Se desactiva automáticamente cuando el paciente es masculino."
-              >
-                Antecedentes Ginecoobstétricos
-              </SectionHeading>
-              <textarea
-                id="antecedentes-gineco-unificados"
-                className={inputClassName + " resize-y"}
-                name="antecedentesGinecoobstetricos"
-                rows={7}
-                value={gynecologicText}
-                onChange={(event) => setGynecologicText(event.target.value)}
-                disabled={sexo === "masculino"}
-              />
-            </section>
-
-            <section
-              id="motivo-consulta"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="04"
-                variant="teal"
-                note="Motivo de consulta, inicio, evolución y sintomatología actual."
-              >
-                Padecimiento Actual
-              </SectionHeading>
-              <textarea
-                className={inputClassName + " resize-y"}
-                name="motivoPadecimientoActual"
-                rows={5}
-                value={motivoPadecimiento}
-                onChange={(e) => setMotivoPadecimiento(e.target.value)}
-                placeholder="Describe el cuadro clínico y evolución del paciente..."
-              />
-            </section>
-
-            <section
-              id="paraclinicos"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="05"
-                variant="teal"
-                note="Precargado como «Sin paraclínicos que comentar»."
-              >
-                Paraclínicos y Escalas
-              </SectionHeading>
-              <textarea
-                className={inputClassName + " resize-y"}
-                name="paraclinicos"
-                rows={5}
-                value={paraclinicosText}
-                onChange={(e) => setParaclinicosText(e.target.value)}
-              />
-            </section>
-
-            <section
-              id="exploracion-fisica"
-              className={sectionClassName + " xl:col-span-12"}
-            >
-              <SectionHeading
-                number="06"
-                variant="teal"
-                note="Incluye al final «Resto de exploración en apariencia normal.»"
-              >
-                Exploración Física
-              </SectionHeading>
-              <textarea
-                id="exploracion-completa"
-                name="exploracionFisica"
-                rows={7}
-                value={exploracion}
-                onChange={(event) => setExploracion(event.target.value)}
-                className={inputClassName + " resize-y"}
-              />
-            </section>
-
-            <section
-              id="diagnosticos"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="07"
-                variant="navy"
-                note="Busca por clave o padecimiento en el catálogo CIE-10 o agrégalo manualmente."
-              >
-                Diagnósticos CIE-10
-              </SectionHeading>
-
-              <label
-                htmlFor="cie10-search"
-                className="block text-sm font-semibold text-[#123C50]"
-              >
-                Buscar por código CIE-10 o nombre del padecimiento
-                <input
-                  ref={diagnosisSearchField}
-                  id="cie10-search"
-                  type="search"
-                  value={diagnosisQuery}
-                  onChange={(event) => setDiagnosisQuery(event.target.value)}
-                  placeholder="Ej. E11, I10, diabetes, hipertensión, embarazo, faringitis..."
-                  className={inputClassName}
-                />
-              </label>
-
-              {normalizedDiagnosisQuery && diagnosisResults?.length === 0 && (
-                <div className="mt-3 rounded-xl bg-[#F4F8F7] p-3">
-                  <p className="text-xs text-slate-600">
-                    Sin coincidencias exactas en CIE-10. Puedes agregarlo
-                    manualmente:
-                  </p>
-                  {manualDiagnosisOpen && (
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <input
-                        value={manualDiagnosisCode}
-                        onChange={(e) => setManualDiagnosisCode(e.target.value)}
-                        className={inputClassName}
-                        placeholder="Código CIE-10 (opcional)"
-                      />
-                      <input
-                        value={manualDiagnosisDescription}
-                        onChange={(e) =>
-                          setManualDiagnosisDescription(e.target.value)
-                        }
-                        className={inputClassName}
-                        placeholder="Nombre del diagnóstico"
-                      />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (manualDiagnosisOpen) addManualDiagnosis();
-                      else {
-                        setManualDiagnosisDescription(diagnosisQuery.trim());
-                        setManualDiagnosisOpen(true);
-                      }
-                    }}
-                    className="mt-2 rounded-lg border border-[#18A69A] px-3 py-1.5 text-xs font-bold text-[#123C50]"
                   >
-                    {manualDiagnosisOpen
-                      ? "Confirmar diagnóstico manual"
-                      : "+ Agregar como diagnóstico manual"}
+                    {tab.label}
                   </button>
-                </div>
-              )}
+                );
+              })}
+            </div>
 
-              {visibleDiagnosisResults && diagnosisResultCount > 0 && (
-                <div className="mt-3 max-h-60 space-y-2 overflow-y-auto rounded-xl border border-[#DCE9E6] p-2">
-                  {visibleDiagnosisResults.map((entry) => {
-                    const alreadySelected = selectedDiagnoses.some(
-                      (diagnosis) => diagnosis.code === entry.code,
-                    );
-                    return (
-                      <div
-                        key={entry.code}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-[#E9F4F2] px-3 py-2 text-xs sm:text-sm"
+            {/* PESTAÑA 1: Información del paciente + Signos vitales manuales/app + Padecimiento actual */}
+            {activeSheetTab === "paciente" && (
+              <section id="datos-paciente" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                    01 · Paciente, Signos Vitales y Padecimiento Actual
+                  </h2>
+                  <div className="flex flex-wrap gap-1.5 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectivePatientNote, "Cuadro 1")
+                      }
+                      className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2 py-1 text-[11px] font-bold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1]"
+                    >
+                      📋 Copiar cuadro
+                    </button>
+                    {patientNoteOverride !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setPatientNoteOverride(null)}
+                        className="rounded-lg border border-[#0D9488] bg-white px-2 py-1 text-[11px] font-bold text-[#0F766E] hover:bg-[#EAF4F1]"
                       >
-                        <span>
-                          <strong>{entry.code}</strong> · {entry.description}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={alreadySelected}
-                          onClick={() => addDiagnosis(entry)}
-                          className="shrink-0 rounded-lg bg-[#E9F4F2] px-3 py-1 font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white disabled:opacity-50"
-                        >
-                          {alreadySelected ? "Agregado" : "+ Agregar"}
-                        </button>
-                      </div>
-                    );
-                  })}
+                        ↻ Sincronizar QR/app
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              <div className="mt-4">
-                <h3 className="text-sm font-bold text-[#123C50]">
-                  Diagnósticos seleccionados ({selectedDiagnoses.length})
-                </h3>
-                {selectedDiagnoses.length === 0 ? (
-                  <p className="mt-2 rounded-xl border border-dashed border-[#B8D2CE] bg-[#F8FBFA] p-3 text-xs text-slate-500">
-                    Ningún diagnóstico seleccionado aún.
+                {qrStatus && (
+                  <p
+                    className="mb-1.5 rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-[11px] font-semibold text-[#0F766E]"
+                    role="status"
+                  >
+                    {qrStatus}
                   </p>
-                ) : (
-                  <ul className="mt-2 space-y-2">
-                    {selectedDiagnoses.map((diagnosis) => (
-                      <li
-                        key={diagnosis.code}
-                        className="rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] p-3 text-xs sm:text-sm"
-                      >
-                        <div className="flex items-start justify-between gap-2">
+                )}
+
+                <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-xl border border-amber-300 bg-amber-50/70 p-2 sm:grid-cols-3 lg:grid-cols-6 print:hidden">
+                  {(
+                    [
+                      { key: "nombre", label: "Nombre" },
+                      { key: "sexo", label: "Sexo" },
+                      { key: "edad", label: "Edad" },
+                      { key: "nss", label: "NSS" },
+                      { key: "motivo", label: "Motivo" },
+                      { key: "padecimiento", label: "Padecimiento" },
+                    ] as const
+                  ).map((item) => (
+                    <label
+                      key={item.key}
+                      className="block text-[10px] font-extrabold uppercase tracking-wide text-amber-900"
+                    >
+                      {item.label}
+                      <input
+                        type="text"
+                        value={quickPatientFields[item.key]}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setQuickFieldsTouched(true);
+                          setPatientNoteOverride(null);
+                          setQuickPatientFields((prev) => ({
+                            ...prev,
+                            [item.key]: val,
+                          }));
+                        }}
+                        className="mt-0.5 w-full rounded-md border border-amber-400 bg-amber-100 px-2 py-1 text-[11px] font-bold text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:bg-white"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <textarea
+                  id="cuadro-paciente-padecimiento"
+                  name="cuadroPacientePadecimiento"
+                  rows={7}
+                  value={effectivePatientNote}
+                  onChange={(event) => handlePatientNoteChange(event.target.value)}
+                  placeholder="PACIENTE: Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx&#10;&#10;PADECIMIENTO ACTUAL: Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado"
+                  className={inputClassName + " resize-y font-sans text-xs"}
+                />
+              </section>
+            )}
+
+            {/* PESTAÑA 2: Exploración física (incluyendo signos vitales si los hay) */}
+            {activeSheetTab === "exploracion" && (
+              <section id="exploracion-fisica" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                    02 · Exploración Física
+                  </h2>
+                  <div className="flex flex-wrap gap-1.5 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveExploracion, "Exploración física")
+                      }
+                      className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2 py-1 text-[11px] font-bold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1]"
+                    >
+                      📋 Copiar cuadro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExploracion(
+                          professionalDetails.exploracionPersonalizada.trim() ||
+                            defaultPhysicalExamText,
+                        );
+                        setExploracionEdited(false);
+                      }}
+                      className="rounded-lg border border-[#D6E6E1] bg-white px-2 py-1 text-[11px] font-bold text-[#0F766E] hover:bg-[#EAF4F1]"
+                    >
+                      ↻ Aplicar formato del perfil
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  id="exploracion-completa"
+                  name="exploracionFisica"
+                  rows={9}
+                  value={effectiveExploracion}
+                  onChange={(event) => handleExploracionChange(event.target.value)}
+                  className={inputClassName + " resize-y text-xs"}
+                />
+              </section>
+            )}
+
+            {/* PESTAÑA 3: Barra CIE-10 */}
+            {activeSheetTab === "cie10" && (
+              <section id="diagnosticos" className={sectionClassName}>
+                <SectionHeading
+                  number="03"
+                  variant="navy"
+                  note="Busca por clave o padecimiento en el catálogo CIE-10 o agrégalo manualmente."
+                >
+                  Diagnósticos CIE-10
+                </SectionHeading>
+
+                <label
+                  htmlFor="cie10-search"
+                  className="block text-sm font-semibold text-[#0F2D3D]"
+                >
+                  Buscar por código CIE-10 o nombre del padecimiento
+                  <input
+                    ref={diagnosisSearchField}
+                    id="cie10-search"
+                    type="search"
+                    value={diagnosisQuery}
+                    onChange={(event) => setDiagnosisQuery(event.target.value)}
+                    placeholder="Ej. E11, I10, diabetes, hipertensión, embarazo, faringitis..."
+                    className={inputClassName}
+                  />
+                </label>
+
+                {normalizedDiagnosisQuery && diagnosisResults?.length === 0 && (
+                  <div className="mt-3 rounded-xl bg-[#F6FAF8] p-3">
+                    <p className="text-xs text-slate-600">
+                      Sin coincidencias exactas en CIE-10. Puedes agregarlo
+                      manualmente:
+                    </p>
+                    {manualDiagnosisOpen && (
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <input
+                          value={manualDiagnosisCode}
+                          onChange={(e) =>
+                            setManualDiagnosisCode(e.target.value)
+                          }
+                          className={inputClassName}
+                          placeholder="Código CIE-10 (opcional)"
+                        />
+                        <input
+                          value={manualDiagnosisDescription}
+                          onChange={(e) =>
+                            setManualDiagnosisDescription(e.target.value)
+                          }
+                          className={inputClassName}
+                          placeholder="Nombre del diagnóstico"
+                        />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (manualDiagnosisOpen) addManualDiagnosis();
+                        else {
+                          setManualDiagnosisDescription(diagnosisQuery.trim());
+                          setManualDiagnosisOpen(true);
+                        }
+                      }}
+                      className="mt-2 rounded-lg border border-[#0D9488] px-3 py-1.5 text-xs font-bold text-[#0F2D3D]"
+                    >
+                      {manualDiagnosisOpen
+                        ? "Confirmar diagnóstico manual"
+                        : "+ Agregar como diagnóstico manual"}
+                    </button>
+                  </div>
+                )}
+
+                {visibleDiagnosisResults && diagnosisResultCount > 0 && (
+                  <div className="mt-3 max-h-56 space-y-2 overflow-y-auto rounded-xl border border-[#D6E6E1] p-2">
+                    {visibleDiagnosisResults.map((entry) => {
+                      const alreadySelected = selectedDiagnoses.some(
+                        (diagnosis) => diagnosis.code === entry.code,
+                      );
+                      return (
+                        <div
+                          key={entry.code}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-[#EAF4F1] px-3 py-2 text-xs sm:text-sm"
+                        >
                           <span>
-                            <strong>
-                              {diagnosis.manual
-                                ? diagnosis.manualCode || "MANUAL"
-                                : diagnosis.code}
-                            </strong>{" "}
-                            · {diagnosis.description}
+                            <strong>{entry.code}</strong> · {entry.description}
                           </span>
                           <button
                             type="button"
-                            onClick={() => removeDiagnosis(diagnosis.code)}
-                            className="font-bold text-rose-700 hover:underline"
+                            disabled={alreadySelected}
+                            onClick={() => addDiagnosis(entry)}
+                            className="shrink-0 rounded-lg bg-[#EAF4F1] px-3 py-1 font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white disabled:opacity-50"
                           >
-                            Quitar ×
+                            {alreadySelected ? "Agregado" : "+ Agregar"}
                           </button>
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-4 border-t border-[#DCE9E6] pt-2 text-xs">
-                          <label className="flex items-center gap-1.5 font-semibold">
-                            <input
-                              type="radio"
-                              name="diagnostico-principal"
-                              checked={diagnosis.principal}
-                              onChange={() =>
-                                setPrincipalDiagnosis(diagnosis.code)
-                              }
-                            />
-                            Principal
-                          </label>
-                          <label className="flex items-center gap-1.5">
-                            <input
-                              type="checkbox"
-                              checked={diagnosis.chronic}
-                              onChange={() =>
-                                toggleChronicDiagnosis(diagnosis.code)
-                              }
-                            />
-                            Crónico
-                          </label>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-
-            <section
-              id="tratamiento-farmacologico"
-              className={sectionClassName + " xl:col-span-6"}
-            >
-              <SectionHeading
-                number="08"
-                variant="navy"
-                note="Selecciona medicamentos del Cuadro Básico IMSS y agrégalos uno por uno."
-              >
-                Tratamiento Médico (Uno por Uno)
-              </SectionHeading>
-
-              <label
-                htmlFor="buscar-medicamento"
-                className="block text-sm font-semibold text-[#123C50]"
-              >
-                Buscar medicamento por nombre o clave IMSS
-                <input
-                  id="buscar-medicamento"
-                  type="search"
-                  value={medicationQuery}
-                  onChange={(event) => {
-                    setMedicationQuery(event.target.value);
-                    setSelectedMedication(event.target.value);
-                  }}
-                  className={inputClassName}
-                  placeholder="Ej. Metformina, Losartán, Enalapril, Insulina, Paracetamol, Ácido fólico..."
-                />
-              </label>
-
-              {filteredMedications.length > 0 && (
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-[#DCE9E6] bg-white">
-                  {filteredMedications.map((item) => (
-                    <button
-                      key={item.code}
-                      type="button"
-                      onClick={() => {
-                        setSelectedMedication(item.name);
-                        setSelectedMedicationCode(item.code);
-                        setMedicationQuery(item.name);
-                        setMedicationFields({
-                          presentacion: item.presentation,
-                          dosis: item.dose,
-                          via: item.route,
-                          frecuencia: item.frequency,
-                          duracion: item.duration,
-                          cantidad: item.quantity,
-                          repeticiones: "0",
-                        });
-                      }}
-                      className="block w-full border-b border-[#E9F4F2] px-3 py-2 text-left text-xs hover:bg-[#F4F8FD] sm:text-sm"
-                    >
-                      <strong>{item.name}</strong>
-                      <span className="ml-2 text-slate-500">
-                        Clave {item.code} · {item.presentation}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {(selectedMedication || medicationQuery.trim()) && (
-                <div className="mt-3 space-y-3 rounded-xl border border-[#18A69A] bg-[#F8FBFA] p-3">
-                  <p className="text-xs font-extrabold uppercase text-[#16877F]">
-                    Configurar posología para:{" "}
-                    {selectedMedication || medicationQuery}
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Field
-                      label="Presentación"
-                      name="medPresentacion"
-                      value={medicationFields.presentacion}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, presentacion: v }))
-                      }
-                    />
-                    <Field
-                      label="Dosis / Posología"
-                      name="medDosis"
-                      value={medicationFields.dosis}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, dosis: v }))
-                      }
-                    />
-                    <Field
-                      label="Vía de administración"
-                      name="medVia"
-                      value={medicationFields.via}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, via: v }))
-                      }
-                    />
-                    <Field
-                      label="Frecuencia / Horario"
-                      name="medFrecuencia"
-                      value={medicationFields.frecuencia}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, frecuencia: v }))
-                      }
-                    />
-                    <Field
-                      label="Duración del tratamiento"
-                      name="medDuracion"
-                      value={medicationFields.duracion}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, duracion: v }))
-                      }
-                    />
-                    <Field
-                      label="Cantidad a surtir"
-                      name="medCantidad"
-                      value={medicationFields.cantidad}
-                      onChange={(v) =>
-                        setMedicationFields((c) => ({ ...c, cantidad: v }))
-                      }
-                    />
+                      );
+                    })}
                   </div>
-                  <button
-                    type="button"
-                    onClick={addMedicationToList}
-                    className="w-full rounded-xl bg-[#18A69A] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#123C50]"
-                  >
-                    + Agregar este medicamento a la Receta
-                  </button>
-                </div>
-              )}
+                )}
 
-              <div className="mt-4">
-                <h3 className="text-sm font-bold text-[#123C50]">
-                  Medicamentos en la receta actual (
-                  {prescribedMedications.length})
-                </h3>
-                {prescribedMedications.length === 0 ? (
-                  <p className="mt-2 rounded-xl border border-dashed border-[#B8D2CE] bg-[#F8FBFA] p-3 text-xs text-slate-500">
-                    Busca un medicamento arriba y presiona «+ Agregar este
-                    medicamento a la Receta» para ir armando tu lista uno por
-                    uno.
-                  </p>
-                ) : (
-                  <ul className="mt-2 space-y-2">
-                    {prescribedMedications.map((med, idx) => (
-                      <li
-                        key={med.id}
-                        className="flex flex-col justify-between gap-2 rounded-xl border border-[#DCE9E6] bg-white p-3 text-xs sm:flex-row sm:items-center sm:text-sm"
-                      >
-                        <div>
-                          <p className="font-bold text-[#123C50]">
-                            {idx + 1}. {med.name}{" "}
-                            <span className="font-normal text-slate-500">
-                              ({med.presentacion})
-                            </span>
-                          </p>
-                          <p className="mt-0.5 text-slate-600">
-                            <strong>Indicaciones:</strong> {med.dosis} · Vía{" "}
-                            {med.via} · {med.frecuencia} · durante{" "}
-                            {med.duracion} ({med.cantidad})
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeMedicationFromList(med.id)}
-                          className="self-start rounded-lg px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 sm:self-center"
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold text-[#0F2D3D]">
+                    Diagnósticos seleccionados ({selectedDiagnoses.length})
+                  </h3>
+                  {selectedDiagnoses.length === 0 ? (
+                    <p className="mt-2 rounded-xl border border-dashed border-[#B8D2CE] bg-[#F8FBFA] p-3 text-xs text-slate-500">
+                      Ningún diagnóstico seleccionado aún.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {selectedDiagnoses.map((diagnosis) => (
+                        <li
+                          key={diagnosis.code}
+                          className="rounded-xl border border-[#D6E6E1] bg-[#F8FBFA] p-3 text-xs sm:text-sm"
                         >
-                          Quitar ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
+                          <div className="flex items-start justify-between gap-2">
+                            <span>
+                              <strong>
+                                {diagnosis.manual
+                                  ? diagnosis.manualCode || "MANUAL"
+                                  : diagnosis.code}
+                              </strong>{" "}
+                              · {diagnosis.description}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeDiagnosis(diagnosis.code)}
+                              className="font-bold text-rose-700 hover:underline"
+                            >
+                              Quitar ×
+                            </button>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-4 border-t border-[#D6E6E1] pt-2 text-xs">
+                            <label className="flex items-center gap-1.5 font-semibold">
+                              <input
+                                type="radio"
+                                name="diagnostico-principal"
+                                checked={diagnosis.principal}
+                                onChange={() =>
+                                  setPrincipalDiagnosis(diagnosis.code)
+                                }
+                              />
+                              Principal
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={diagnosis.chronic}
+                                onChange={() =>
+                                  toggleChronicDiagnosis(diagnosis.code)
+                                }
+                              />
+                              Crónico
+                            </label>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            )}
 
-            <section
-              id="indicaciones"
-              className={sectionClassName + " xl:col-span-8"}
-            >
-              <SectionHeading
-                number="09"
-                variant="teal"
-                note="Indicaciones higiénico-dietéticas y signos de alarma editables."
-              >
-                Indicaciones Médicas y Signos de Alarma
-              </SectionHeading>
-              <textarea
-                id="indicaciones-paciente"
-                name="indicaciones"
-                rows={6}
-                value={indicationsOverride ?? generatedIndications}
-                onChange={(event) => setIndicationsOverride(event.target.value)}
-                placeholder="Indicaciones higiénico-dietéticas, cuidados generales y datos de alarma..."
-                className={inputClassName + " resize-y"}
-              />
-              {indicationsOverride !== null && (
-                <button
-                  type="button"
-                  onClick={() => setIndicationsOverride(null)}
-                  className="mt-2 text-xs font-semibold text-[#16877F] underline"
-                >
-                  Restablecer indicaciones automáticas del formato
-                </button>
-              )}
-            </section>
-
-            <section
-              id="pronostico"
-              className={sectionClassName + " xl:col-span-4"}
-            >
-              <SectionHeading
-                number="10"
-                variant="teal"
-                note="Pronóstico clínico y próxima cita."
-              >
-                Pronóstico y Seguimiento
-              </SectionHeading>
-              <label className="block text-sm font-semibold text-[#123C50]">
-                Pronóstico para la vida y la función
-                <select
-                  className={inputClassName}
-                  name="pronostico"
-                  value={prognosis}
-                  onChange={(event) => setPrognosis(event.target.value)}
-                >
-                  {[
-                    "Bueno para la vida y la función",
-                    "Reservado a evolución",
-                    "Favorable",
-                    "Desfavorable",
-                    "Malo",
-                  ].map((option) => (
-                    <option key={option}>{option}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="mt-3">
-                <Field
-                  label="Próxima cita / Seguimiento"
-                  name="seguimiento"
-                  value={seguimientoText}
-                  onChange={setSeguimientoText}
-                />
-              </div>
-            </section>
-
-            <section
-              id="datos-medico"
-              className={sectionClassName + " xl:col-span-12"}
-            >
-              <SectionHeading
-                number="11"
-                variant="navy"
-                note="Datos precargados automáticamente desde tu registro profesional."
-              >
-                Datos del Médico Registrado
-              </SectionHeading>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] p-3.5 text-xs sm:text-sm">
-                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-                  <div>
-                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Médico Tratante
-                    </span>
-                    <strong className="text-[#123C50]">
-                      {professionalDetails.nombre}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Cédula Profesional
-                    </span>
-                    <strong className="text-[#123C50]">
-                      {professionalDetails.cedula}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Matrícula IMSS
-                    </span>
-                    <strong className="text-[#123C50]">
-                      {professionalDetails.matricula}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Unidad Médica
-                    </span>
-                    <strong className="text-[#123C50]">
-                      {professionalDetails.unidad}
-                    </strong>
+            {/* PESTAÑA 4: Recomendaciones y tratamiento no farmacológico */}
+            {activeSheetTab === "recomendaciones" && (
+              <section id="indicaciones" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                    04 · Recomendaciones y Tratamiento No Farmacológico
+                  </h2>
+                  <div className="flex flex-wrap gap-1.5 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(
+                          indicationsOverride ?? generatedIndications,
+                          "Recomendaciones",
+                        )
+                      }
+                      className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2 py-1 text-[11px] font-bold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1]"
+                    >
+                      📋 Copiar cuadro
+                    </button>
+                    {indicationsOverride !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setIndicationsOverride(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2 py-1 text-[11px] font-bold text-[#0F766E] hover:bg-[#EAF4F1]"
+                      >
+                        ↻ Restablecer recomendaciones
+                      </button>
+                    )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveWindow("perfil")}
-                  className="rounded-xl border border-[#18A69A] bg-white px-3 py-1.5 text-xs font-extrabold text-[#123C50] transition hover:bg-[#E9F4F2] print:hidden"
-                >
-                  Editar perfil
-                </button>
-              </div>
-            </section>
+                <textarea
+                  id="indicaciones-paciente"
+                  name="indicaciones"
+                  rows={9}
+                  value={indicationsOverride ?? generatedIndications}
+                  onChange={(event) =>
+                    setIndicationsOverride(event.target.value)
+                  }
+                  placeholder="Recomendaciones higiénico-dietéticas, actividad física, tratamiento no farmacológico y datos de alarma..."
+                  className={inputClassName + " resize-y text-xs"}
+                />
+              </section>
+            )}
           </fieldset>
 
-          <div className="sticky bottom-2 z-10 rounded-2xl border border-[#DCE9E6] bg-white/95 p-3 shadow-lg backdrop-blur print:hidden sm:px-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5">
+          <div className="sticky bottom-1 z-10 rounded-xl border border-[#D6E6E1] bg-white/95 px-2.5 py-2 shadow-md backdrop-blur print:hidden sm:px-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const draft: RecetaDraft = {
+                        doctor: {
+                          nombre: professionalDetails.nombre,
+                          cedula: professionalDetails.cedula,
+                          matricula: professionalDetails.matricula,
+                          unidad: professionalDetails.unidad,
+                        },
+                        patientNote: effectivePatientNote,
+                        diagnosesText: diagnosesConcatenated,
+                        indicationsText: finalIndicationsText,
+                      };
+                      window.sessionStorage.setItem(
+                        RECETA_DRAFT_STORAGE_KEY,
+                        JSON.stringify(draft),
+                      );
+                    } catch {
+                      // Continuar a la pantalla de receta aunque sessionStorage no esté disponible
+                    }
+                    router.push("/profesionales/consulta/receta");
+                  }}
+                  className="col-span-3 rounded-full bg-[#0D9488] px-3.5 py-1.5 text-center text-xs font-extrabold text-white shadow-sm transition hover:bg-[#0F766E] sm:col-span-1"
+                >
+                  Agregar Receta →
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveWindow("receta")}
-                  className="rounded-full bg-[#18A69A] px-5 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#148B80] sm:text-sm"
+                  className="col-span-2 rounded-full border border-[#0D9488] bg-white px-3 py-1.5 text-xs font-extrabold text-[#0F2D3D] transition hover:bg-[#EAF4F1] sm:col-span-1"
                 >
-                  Generar Receta
+                  Vista rápida
                 </button>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="rounded-full border-2 border-[#123C50] bg-white px-5 py-2 text-xs font-extrabold text-[#123C50] transition hover:bg-[#F4F8F7] sm:text-sm"
+                  className="rounded-full border border-[#0F2D3D] bg-white px-3 py-1.5 text-xs font-extrabold text-[#0F2D3D] transition hover:bg-[#F6FAF8]"
                 >
                   Imprimir
                 </button>
@@ -2926,7 +2598,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={finishAndClearConsultation}
-                className="rounded-full bg-[#123C50] px-5 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-rose-800 sm:text-sm"
+                className="w-full rounded-full bg-[#0F2D3D] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-rose-800 sm:w-auto"
               >
                 Finalizar Consulta
               </button>
@@ -2934,7 +2606,7 @@ export default function App() {
 
             {saveMessage && (
               <p
-                className="mt-2 text-xs font-semibold text-[#16877F]"
+                className="mt-2 text-xs font-semibold text-[#0F766E]"
                 role="status"
               >
                 {saveMessage}
@@ -2953,12 +2625,12 @@ export default function App() {
             className="absolute inset-0 bg-slate-900/25"
           />
           <aside
-            className="absolute inset-y-0 right-0 w-[min(25rem,94vw)] overflow-y-auto border-l border-[#DCE9E6] bg-white p-4 shadow-2xl sm:p-5"
+            className="absolute inset-y-0 right-0 w-[min(25rem,94vw)] overflow-y-auto border-l border-[#D6E6E1] bg-white p-4 shadow-2xl sm:p-5"
             aria-label="Barra lateral de herramientas y formatos clínicos"
           >
-            <div className="mb-4 flex items-center justify-between border-b border-[#E9F4F2] pb-3">
+            <div className="mb-4 flex items-center justify-between border-b border-[#EAF4F1] pb-3">
               <div>
-                <h2 className="text-base font-extrabold text-[#123C50] sm:text-lg">
+                <h2 className="text-base font-extrabold text-[#0F2D3D] sm:text-lg">
                   Barra Lateral de Consulta
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -2968,33 +2640,30 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="rounded-lg bg-[#F4F8F7] px-3 py-1.5 text-xs font-bold text-[#123C50]"
+                className="rounded-lg bg-[#F6FAF8] px-3 py-1.5 text-xs font-bold text-[#0F2D3D]"
               >
                 Contraer ✕
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-[#DCE9E6] bg-[#F8FBFA] p-3.5">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-[#123C50]">
+              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
                   Formatos de Exportación e Impresión
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-500">
                   Abre la ventana lista para imprimir o copiar por bloques según el programa institucional:
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
                       setClinicalFormat("diabetes");
                       setActiveWindow("diabetes");
                     }}
-                    className="flex w-full items-center justify-between rounded-xl bg-[#18A69A] px-3.5 py-2.5 text-left text-xs font-extrabold text-white shadow-sm transition hover:opacity-95"
+                    className="rounded-lg bg-[#0D9488] px-2.5 py-1.5 text-center text-[11px] font-bold text-white shadow-sm transition hover:opacity-95"
                   >
-                    <span>Diabetes Mellitus (2 cuadros)</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">
-                      Abrir ↗
-                    </span>
+                    Diabetes Mellitus
                   </button>
 
                   <button
@@ -3003,12 +2672,9 @@ export default function App() {
                       setClinicalFormat("hipertension");
                       setActiveWindow("hipertension");
                     }}
-                    className="flex w-full items-center justify-between rounded-xl bg-[#E05A6D] px-3.5 py-2.5 text-left text-xs font-extrabold text-white shadow-sm transition hover:opacity-95"
+                    className="rounded-lg bg-[#E05A6D] px-2.5 py-1.5 text-center text-[11px] font-bold text-white shadow-sm transition hover:opacity-95"
                   >
-                    <span>Hipertensión Arterial (3 cuadros)</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">
-                      Abrir ↗
-                    </span>
+                    Hipertensión
                   </button>
 
                   <button
@@ -3017,25 +2683,33 @@ export default function App() {
                       setClinicalFormat("prenatal");
                       setActiveWindow("prenatal");
                     }}
-                    className="flex w-full items-center justify-between rounded-xl bg-[#F29D4B] px-3.5 py-2.5 text-left text-xs font-extrabold text-white shadow-sm transition hover:opacity-95"
+                    className="rounded-lg bg-[#F29D4B] px-2.5 py-1.5 text-center text-[11px] font-bold text-white shadow-sm transition hover:opacity-95"
                   >
-                    <span>Control Prenatal (1 cuadro)</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">
-                      Abrir ↗
-                    </span>
+                    Control Prenatal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClinicalFormat("general");
+                      setActiveWindow("general");
+                    }}
+                    className="rounded-lg bg-[#0F2D3D] px-2.5 py-1.5 text-center text-[11px] font-bold text-white shadow-sm transition hover:opacity-95"
+                  >
+                    Consulta General
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#18A69A] bg-[#F4F8F7] p-3.5">
+              <div className="rounded-2xl border border-[#0D9488] bg-[#F6FAF8] p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold uppercase tracking-wide text-[#16877F]">
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-[#0F766E]">
                     Calculadora clínica rápida
                   </span>
                   <button
                     type="button"
                     onClick={() => setActiveWindow("herramientas")}
-                    className="text-[11px] font-bold text-[#123C50] underline"
+                    className="text-[11px] font-bold text-[#0F2D3D] underline"
                   >
                     Personalizar lista
                   </button>
@@ -3046,7 +2720,7 @@ export default function App() {
                     setActiveSidebarCalcId(e.target.value);
                     setSidebarCalcInputs({});
                   }}
-                  className="mt-1.5 w-full rounded-lg border border-[#DCE9E6] bg-white px-3 py-2 text-xs font-bold text-[#123C50]"
+                  className="mt-1.5 w-full rounded-lg border border-[#D6E6E1] bg-white px-3 py-2 text-xs font-bold text-[#0F2D3D]"
                 >
                   {Object.entries(SIDEBAR_CALCULATORS)
                     .filter(([id]) => enabledCalcIds.includes(id))
@@ -3064,7 +2738,7 @@ export default function App() {
                         return (
                           <label
                             key={f.key}
-                            className="block text-xs font-semibold text-[#123C50]"
+                            className="block text-xs font-semibold text-[#0F2D3D]"
                           >
                             {f.label}
                             <select
@@ -3075,7 +2749,7 @@ export default function App() {
                                   [f.key]: e.target.value,
                                 }))
                               }
-                              className="mt-1 w-full rounded-lg border border-[#DCE9E6] bg-white px-2.5 py-1.5 text-xs"
+                              className="mt-1 w-full rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1.5 text-xs"
                             >
                               <option value="">Selecciona...</option>
                               {f.options.map((opt) => (
@@ -3091,7 +2765,7 @@ export default function App() {
                         return (
                           <label
                             key={f.key}
-                            className="flex items-center gap-2 text-xs font-semibold text-[#123C50]"
+                            className="flex items-center gap-2 text-xs font-semibold text-[#0F2D3D]"
                           >
                             <input
                               type="checkbox"
@@ -3110,7 +2784,7 @@ export default function App() {
                       return (
                         <label
                           key={f.key}
-                          className="block text-xs font-semibold text-[#123C50]"
+                          className="block text-xs font-semibold text-[#0F2D3D]"
                         >
                           {f.label} {f.unit ? "(" + f.unit + ")" : ""}
                           <input
@@ -3123,15 +2797,15 @@ export default function App() {
                                 [f.key]: e.target.value,
                               }))
                             }
-                            className="mt-1 w-full rounded-lg border border-[#DCE9E6] bg-white px-2.5 py-1.5 text-xs"
+                            className="mt-1 w-full rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1.5 text-xs"
                           />
                         </label>
                       );
                     })}
 
                     {sidebarCalcResult && (
-                      <div className="rounded-lg border border-[#18A69A] bg-white p-2.5">
-                        <p className="text-xs font-extrabold text-[#123C50]">
+                      <div className="rounded-lg border border-[#0D9488] bg-white p-2.5">
+                        <p className="text-xs font-extrabold text-[#0F2D3D]">
                           Resultado: {sidebarCalcResult}
                         </p>
                         <button
@@ -3149,7 +2823,7 @@ export default function App() {
                               }));
                             }
                           }}
-                          className="mt-2 w-full rounded-lg bg-[#123C50] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#18A69A]"
+                          className="mt-2 w-full rounded-lg bg-[#0F2D3D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0D9488]"
                         >
                           + Insertar resultado en Paraclínicos
                         </button>
@@ -3159,116 +2833,295 @@ export default function App() {
                 )}
               </div>
 
-              {/* FORMATOS OFICIALES IMPRIMIBLES: PERCENTILES CDC, BITÁCORA TA Y AUTOMONITOREO GLUCOSA */}
-              <div className="rounded-2xl border border-[#DCE9E6] bg-[#F8FBFA] p-3.5">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-[#123C50]">
-                  Formatos y Tablas Oficiales Imprimibles
+              {/* 3) VADEMÉCUM DEL CUADRO BÁSICO DE MEDICAMENTOS */}
+              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                  Vademécum Cuadro Básico IMSS
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-500">
-                  Estándares internacionales CDC/OMS, AHA/ESC y ADA listos para imprimir:
+                  Busca un medicamento para consultar especificaciones, posología, contraindicaciones e interacciones:
                 </p>
+                <input
+                  type="search"
+                  value={vademecumQuery}
+                  onChange={(e) => {
+                    setVademecumQuery(e.target.value);
+                    if (!e.target.value.trim()) setSelectedVademecumMed(null);
+                  }}
+                  placeholder="Buscar por nombre o clave IMSS..."
+                  className="mt-2 w-full rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1.5 text-xs text-[#0F2D3D] outline-none focus:border-[#0D9488]"
+                />
+                {vademecumQuery.trim() && (
+                  <div className="mt-1.5 max-h-36 space-y-1 overflow-y-auto rounded-lg border border-[#D6E6E1] bg-white p-1.5">
+                    {imssMedicationsCatalog
+                      .filter((med) => {
+                        const q = normalizeSearchText(vademecumQuery.trim());
+                        return (
+                          normalizeSearchText(med.name).includes(q) ||
+                          normalizeSearchText(med.code).includes(q)
+                        );
+                      })
+                      .map((med) => (
+                        <button
+                          key={med.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVademecumMed(med);
+                            setVademecumQuery(med.name);
+                          }}
+                          className="block w-full rounded-md px-2 py-1 text-left text-[11px] hover:bg-[#EAF4F1]"
+                        >
+                          <strong className="text-[#0F2D3D]">{med.name}</strong>{" "}
+                          <span className="font-mono text-[10px] text-[#0F766E]">
+                            ({med.code})
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
 
-                <select
-                  value={activePrintableFormatId}
-                  onChange={(e) => setActivePrintableFormatId(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-[#DCE9E6] bg-white px-3 py-2 text-xs font-bold text-[#123C50]"
-                >
-                  {PRINTABLE_CLINICAL_FORMATS.map((fmt) => (
-                    <option key={fmt.id} value={fmt.id}>
-                      {fmt.title}
-                    </option>
-                  ))}
-                </select>
-
-                {(() => {
-                  const currentFormatDoc =
-                    PRINTABLE_CLINICAL_FORMATS.find(
-                      (f) => f.id === activePrintableFormatId,
-                    ) || PRINTABLE_CLINICAL_FORMATS[0];
-                  return (
-                    <div className="mt-2.5 rounded-xl border border-[#DCE9E6] bg-white p-3">
-                      <p className="text-xs font-extrabold text-[#123C50]">
-                        {currentFormatDoc.title}
-                      </p>
-                      <p className="mt-0.5 text-[11px] font-semibold text-[#18A69A]">
-                        Fuente: {currentFormatDoc.source}
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-600">
-                        {currentFormatDoc.subtitle}
-                      </p>
+                {selectedVademecumMed && (
+                  <div className="mt-2.5 space-y-1.5 rounded-xl border border-[#0D9488] bg-white p-3 text-[11px] leading-relaxed text-[#0F2D3D]">
+                    <div className="flex items-start justify-between gap-2 border-b border-[#EAF4F1] pb-1.5">
+                      <div>
+                        <p className="text-xs font-extrabold">
+                          {selectedVademecumMed.name}
+                        </p>
+                        <p className="font-mono text-[10px] font-bold text-[#0F766E]">
+                          Clave IMSS: {selectedVademecumMed.code}
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() =>
-                          openOfficialClinicalFormatPrintWindow(
-                            currentFormatDoc,
-                          )
-                        }
-                        className="mt-2.5 w-full rounded-xl bg-[#123C50] px-3 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-[#18A69A]"
+                        onClick={() => setSelectedVademecumMed(null)}
+                        className="text-[11px] font-bold text-slate-400 hover:text-rose-700"
                       >
-                        🖨 Abrir e Imprimir {currentFormatDoc.title} ↗
+                        ✕
                       </button>
                     </div>
-                  );
-                })()}
+                    <p>
+                      <strong>Presentación:</strong>{" "}
+                      {selectedVademecumMed.presentation}
+                    </p>
+                    <p>
+                      <strong>Especificaciones / Indicaciones:</strong>{" "}
+                      {selectedVademecumMed.indications}
+                    </p>
+                    <p>
+                      <strong>Posología habitual:</strong>{" "}
+                      {selectedVademecumMed.dose} · Vía{" "}
+                      {selectedVademecumMed.route} ·{" "}
+                      {selectedVademecumMed.frequency}
+                    </p>
+                    <p>
+                      <strong>Contraindicaciones:</strong>{" "}
+                      {selectedVademecumMed.contraindications}
+                    </p>
+                    <p>
+                      <strong>Interacciones:</strong>{" "}
+                      {selectedVademecumMed.interactions}
+                    </p>
+                    <p>
+                      <strong>Precauciones:</strong>{" "}
+                      {selectedVademecumMed.precautions}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <details
-                open
-                className="rounded-xl border border-[#DCE9E6] px-4 py-3"
-              >
-                <summary className="cursor-pointer text-sm font-bold text-[#123C50]">
-                  Vademécum Cuadro Básico IMSS y Biblioteca
-                </summary>
-                <div className="mt-2 space-y-1.5 text-xs">
-                  <a
-                    href="https://www.imss.gob.mx/sites/all/statics/pdf/cuadros-basicos/Grupo-N5-Endocrinologia-y-Metabolismo-R.pdf"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block rounded-lg px-2 py-1.5 font-semibold text-[#16877F] hover:bg-[#E9F4F2]"
+              {/* 4) FORMATOS Y TABLAS: SOLO LINKS PARA ABRIR E IMPRIMIR EN OTRA PESTAÑA (PERSONALIZABLES) */}
+              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                    Formatos y Tablas (Imprimir)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setEditingPrintableTables((v) => !v)}
+                    className="text-[11px] font-bold text-[#0F766E] underline"
                   >
-                    Cuadro Básico IMSS · Endocrinología (Diabetes) ↗
-                  </a>
-                  <a
-                    href="https://www.imss.gob.mx/sites/all/statics/pdf/cuadros-basicos/Grupo-N3-Cardiologia-R.pdf"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block rounded-lg px-2 py-1.5 font-semibold text-[#16877F] hover:bg-[#E9F4F2]"
-                  >
-                    Cuadro Básico IMSS · Cardiología (Hipertensión) ↗
-                  </a>
-                  <a
-                    href="https://www.imss.gob.mx/sites/all/statics/pdf/cuadros-basicos/Grupo-N9-Gineco-Obstetricia-R.pdf"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block rounded-lg px-2 py-1.5 font-semibold text-[#16877F] hover:bg-[#E9F4F2]"
-                  >
-                    Cuadro Básico IMSS · Gineco-Obstetricia ↗
-                  </a>
+                    {editingPrintableTables ? "Listo" : "Personalizar"}
+                  </button>
                 </div>
-              </details>
+
+                {editingPrintableTables ? (
+                  <div className="mt-2.5 space-y-2 rounded-xl border border-[#D6E6E1] bg-white p-2.5 text-xs">
+                    <p className="text-[11px] font-bold text-slate-500">
+                      Activa o quita las tablas que usas en consulta:
+                    </p>
+                    {PRINTABLE_CLINICAL_FORMATS.map((fmt) => {
+                      const checked = enabledPrintableFormatIds.includes(fmt.id);
+                      return (
+                        <label
+                          key={fmt.id}
+                          className="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-[#F6FAF8] px-2.5 py-1.5 text-[11px] font-semibold"
+                        >
+                          <span>{fmt.title}</span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setEnabledPrintableFormatIds((prev) => {
+                                const next = checked
+                                  ? prev.filter((id) => id !== fmt.id)
+                                  : [...prev, fmt.id];
+                                try {
+                                  localStorage.setItem(
+                                    "esd_enabled_printable_formats",
+                                    JSON.stringify(next),
+                                  );
+                                } catch {
+                                  // Ignorar
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                        </label>
+                      );
+                    })}
+
+                    {customPrintableLinks.map((link) => (
+                      <div
+                        key={link.id}
+                        className="flex items-center justify-between gap-2 rounded-lg bg-[#F6FAF8] px-2.5 py-1.5 text-[11px]"
+                      >
+                        <span className="truncate font-semibold">
+                          {link.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomPrintableLinks((prev) => {
+                              const next = prev.filter(
+                                (item) => item.id !== link.id,
+                              );
+                              try {
+                                localStorage.setItem(
+                                  "esd_custom_printable_links",
+                                  JSON.stringify(next),
+                                );
+                              } catch {
+                                // Ignorar
+                              }
+                              return next;
+                            });
+                          }}
+                          className="font-bold text-rose-700"
+                        >
+                          Quitar ×
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="space-y-1.5 border-t border-[#EAF4F1] pt-2">
+                      <p className="text-[11px] font-bold text-[#0F2D3D]">
+                        + Agregar tabla / enlace propio:
+                      </p>
+                      <input
+                        type="text"
+                        value={newTableTitle}
+                        onChange={(e) => setNewTableTitle(e.target.value)}
+                        placeholder="Nombre (ej. Escala Hamilton)"
+                        className="w-full rounded-lg border border-[#D6E6E1] px-2 py-1 text-[11px]"
+                      />
+                      <input
+                        type="url"
+                        value={newTableUrl}
+                        onChange={(e) => setNewTableUrl(e.target.value)}
+                        placeholder="https://... (URL imprimible)"
+                        className="w-full rounded-lg border border-[#D6E6E1] px-2 py-1 text-[11px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newTableTitle.trim() || !newTableUrl.trim())
+                            return;
+                          const item = {
+                            id: `custom-${Date.now()}`,
+                            title: newTableTitle.trim(),
+                            url: newTableUrl.trim(),
+                          };
+                          setCustomPrintableLinks((prev) => {
+                            const next = [...prev, item];
+                            try {
+                              localStorage.setItem(
+                                "esd_custom_printable_links",
+                                JSON.stringify(next),
+                              );
+                            } catch {
+                              // Ignorar
+                            }
+                            return next;
+                          });
+                          setNewTableTitle("");
+                          setNewTableUrl("");
+                        }}
+                        className="w-full rounded-lg bg-[#0D9488] py-1 text-[11px] font-bold text-white"
+                      >
+                        Agregar link
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    {PRINTABLE_CLINICAL_FORMATS.filter((fmt) =>
+                      enabledPrintableFormatIds.includes(fmt.id),
+                    ).map((fmt) => (
+                      <button
+                        key={fmt.id}
+                        type="button"
+                        onClick={() => openOfficialClinicalFormatPrintWindow(fmt)}
+                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-[#0F766E] transition hover:bg-[#EAF4F1]"
+                      >
+                        <span className="truncate">{fmt.title}</span>
+                        <span className="shrink-0 font-bold">↗</span>
+                      </button>
+                    ))}
+                    {customPrintableLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-[#0F766E] transition hover:bg-[#EAF4F1]"
+                      >
+                        <span className="truncate">{link.title}</span>
+                        <span className="shrink-0 font-bold">↗</span>
+                      </a>
+                    ))}
+                    {enabledPrintableFormatIds.length === 0 &&
+                      customPrintableLinks.length === 0 && (
+                        <p className="text-[11px] text-slate-500">
+                          Sin tablas activas. Usa «Personalizar» para agregar.
+                        </p>
+                      )}
+                  </div>
+                )}
+              </div>
             </div>
           </aside>
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: VISTA PREVIA E IMPRESIÓN DE DIABETES (2 CUADROS NO MODIFICABLES) */}
+      {/* VENTANA EMERGENTE: FORMATO DIABETES MELLITUS (2 VERSIONES MODIFICABLES) */}
       {activeWindow === "diabetes" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#123C50] bg-white p-4 shadow-2xl sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE9E6] pb-3 print:hidden">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
-                <h2 className="text-lg font-extrabold text-[#123C50]">
-                  VISTA PREVIA DE IMPRESIÓN · FORMATO DIABETES MELLITUS
+                <h2 className="text-lg font-extrabold text-[#0F2D3D]">
+                  FORMATO DIABETES MELLITUS · 2 VERSIONES MODIFICABLES
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Información concatenada en 2 cuadros de texto no modificables
+                  Información de la página inicial adaptada en 2 bloques editables para copiar al SIMF
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="rounded-xl bg-[#123C50] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#18A69A]"
+                  className="rounded-xl bg-[#0F2D3D] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0D9488]"
                 >
                   🖨 Imprimir
                 </button>
@@ -3277,10 +3130,10 @@ export default function App() {
                   onClick={() =>
                     downloadNoteAsFile(
                       "nota-diabetes.txt",
-                      diabetesBox1 + "\n\n" + diabetesBox2,
+                      effectiveDiabetesBox1 + "\n\n" + effectiveDiabetesBox2,
                     )
                   }
-                  className="rounded-xl bg-[#18A69A] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#148B80]"
+                  className="rounded-xl bg-[#0D9488] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
                 >
                   💾 Guardar archivo
                 </button>
@@ -3292,18 +3145,18 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro 1: Datos del Paciente, Signos Vitales, Antecedentes, Padecimiento Actual y Paraclínicos",
-                          content: diabetesBox1,
+                            "Versión 1: Paciente, Signos Vitales y Padecimiento Actual",
+                          content: effectiveDiabetesBox1,
                         },
                         {
                           heading:
-                            "Cuadro 2: Exploración Física, Diagnósticos, Tratamiento, Indicaciones y Médico",
-                          content: diabetesBox2,
+                            "Versión 2: Exploración Física, Diagnósticos CIE-10 y Recomendaciones",
+                          content: effectiveDiabetesBox2,
                         },
                       ],
                     )
                   }
-                  className="rounded-xl border border-[#2456C7] bg-white px-3 py-2 text-xs font-bold text-[#2456C7]"
+                  className="rounded-xl border border-[#0284C7] bg-white px-3 py-2 text-xs font-bold text-[#0284C7]"
                 >
                   Abrir en pestaña independiente ↗
                 </button>
@@ -3318,7 +3171,7 @@ export default function App() {
             </div>
 
             {copyFeedback && (
-              <p className="mt-3 rounded-lg bg-[#E9F4F2] px-3 py-1.5 text-xs font-bold text-[#16877F] print:hidden">
+              <p className="mt-3 rounded-lg bg-[#EAF4F1] px-3 py-1.5 text-xs font-bold text-[#0F766E] print:hidden">
                 {copyFeedback}
               </p>
             )}
@@ -3326,49 +3179,69 @@ export default function App() {
             <div className="mt-4 space-y-4">
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                    Cuadro 1 (No modificable): Datos del paciente, Signos
-                    vitales, Antecedentes, Padecimiento actual y Paraclínicos
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Versión 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyTextHelper(diabetesBox1, "Cuadro 1 de Diabetes")
-                    }
-                    className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
-                  >
-                    Copiar Cuadro 1
-                  </button>
+                  <div className="flex gap-1.5 print:hidden">
+                    {diabetesBox1Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setDiabetesBox1Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveDiabetesBox1, "Versión 1 de Diabetes")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Versión 1
+                    </button>
+                  </div>
                 </div>
                 <textarea
-                  readOnly
-                  rows={10}
-                  value={diabetesBox1}
-                  className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
+                  rows={9}
+                  value={effectiveDiabetesBox1}
+                  onChange={(e) => setDiabetesBox1Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
                 />
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                    Cuadro 2 (No modificable): Resto de los datos (Exploración
-                    física, Diagnósticos, Tratamiento, Indicaciones y Médico)
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Versión 2 (Modificable): Exploración física, Diagnósticos y Recomendaciones
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyTextHelper(diabetesBox2, "Cuadro 2 de Diabetes")
-                    }
-                    className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
-                  >
-                    Copiar Cuadro 2
-                  </button>
+                  <div className="flex gap-1.5 print:hidden">
+                    {diabetesBox2Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setDiabetesBox2Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveDiabetesBox2, "Versión 2 de Diabetes")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Versión 2
+                    </button>
+                  </div>
                 </div>
                 <textarea
-                  readOnly
-                  rows={10}
-                  value={diabetesBox2}
-                  className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
+                  rows={9}
+                  value={effectiveDiabetesBox2}
+                  onChange={(e) => setDiabetesBox2Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
                 />
               </div>
             </div>
@@ -3376,24 +3249,24 @@ export default function App() {
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: VISTA PREVIA E IMPRESIÓN DE HIPERTENSIÓN (3 CUADROS NO MODIFICABLES) */}
+      {/* VENTANA EMERGENTE: FORMATO HIPERTENSIÓN (3 CUADROS MODIFICABLES E IMPRIMIBLES) */}
       {activeWindow === "hipertension" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#123C50] bg-white p-4 shadow-2xl sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE9E6] pb-3 print:hidden">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
-                <h2 className="text-lg font-extrabold text-[#123C50]">
-                  VISTA PREVIA DE IMPRESIÓN · FORMATO HIPERTENSIÓN ARTERIAL
+                <h2 className="text-lg font-extrabold text-[#0F2D3D]">
+                  FORMATO HIPERTENSIÓN ARTERIAL · 3 CUADROS MODIFICABLES
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Información dividida en 3 cuadros de texto no modificables
+                  Información de la página inicial en 3 bloques editables e imprimibles para el SIMF
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="rounded-xl bg-[#123C50] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#18A69A]"
+                  className="rounded-xl bg-[#0F2D3D] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0D9488]"
                 >
                   🖨 Imprimir
                 </button>
@@ -3402,10 +3275,14 @@ export default function App() {
                   onClick={() =>
                     downloadNoteAsFile(
                       "nota-hipertension.txt",
-                      htaBox1 + "\n\n" + htaBox2 + "\n\n" + htaBox3,
+                      effectiveHtaBox1 +
+                        "\n\n" +
+                        effectiveHtaBox2 +
+                        "\n\n" +
+                        effectiveHtaBox3,
                     )
                   }
-                  className="rounded-xl bg-[#18A69A] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#148B80]"
+                  className="rounded-xl bg-[#0D9488] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
                 >
                   💾 Guardar archivo
                 </button>
@@ -3417,23 +3294,22 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro 1: Información del Paciente, Antecedentes, Padecimiento Actual y Paraclínicos",
-                          content: htaBox1,
+                            "Cuadro 1: Paciente, Signos Vitales y Padecimiento Actual",
+                          content: effectiveHtaBox1,
+                        },
+                        {
+                          heading: "Cuadro 2: Exploración Física",
+                          content: effectiveHtaBox2,
                         },
                         {
                           heading:
-                            "Cuadro 2: Signos Vitales y Exploración Física",
-                          content: htaBox2,
-                        },
-                        {
-                          heading:
-                            "Cuadro 3: Resto de la Exploración, Diagnósticos, Tratamiento e Indicaciones",
-                          content: htaBox3,
+                            "Cuadro 3: Diagnósticos CIE-10 y Recomendaciones",
+                          content: effectiveHtaBox3,
                         },
                       ],
                     )
                   }
-                  className="rounded-xl border border-[#2456C7] bg-white px-3 py-2 text-xs font-bold text-[#2456C7]"
+                  className="rounded-xl border border-[#0284C7] bg-white px-3 py-2 text-xs font-bold text-[#0284C7]"
                 >
                   Abrir en pestaña independiente ↗
                 </button>
@@ -3448,7 +3324,7 @@ export default function App() {
             </div>
 
             {copyFeedback && (
-              <p className="mt-3 rounded-lg bg-[#E9F4F2] px-3 py-1.5 text-xs font-bold text-[#16877F] print:hidden">
+              <p className="mt-3 rounded-lg bg-[#EAF4F1] px-3 py-1.5 text-xs font-bold text-[#0F766E] print:hidden">
                 {copyFeedback}
               </p>
             )}
@@ -3456,73 +3332,103 @@ export default function App() {
             <div className="mt-4 space-y-4">
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                    Cuadro 1 (No modificable): Información del paciente,
-                    Antecedentes, Padecimiento actual y Paraclínicos
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Cuadro 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyTextHelper(htaBox1, "Cuadro 1 de Hipertensión")
-                    }
-                    className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
-                  >
-                    Copiar Cuadro 1
-                  </button>
+                  <div className="flex gap-1.5 print:hidden">
+                    {htaBox1Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setHtaBox1Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveHtaBox1, "Cuadro 1 de Hipertensión")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Cuadro 1
+                    </button>
+                  </div>
                 </div>
                 <textarea
-                  readOnly
                   rows={7}
-                  value={htaBox1}
-                  className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
+                  value={effectiveHtaBox1}
+                  onChange={(e) => setHtaBox1Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
                 />
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                    Cuadro 2 (No modificable): Signos vitales y Exploración
-                    física
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Cuadro 2 (Modificable): Exploración física
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyTextHelper(htaBox2, "Cuadro 2 de Hipertensión")
-                    }
-                    className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
-                  >
-                    Copiar Cuadro 2
-                  </button>
+                  <div className="flex gap-1.5 print:hidden">
+                    {htaBox2Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setHtaBox2Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveHtaBox2, "Cuadro 2 de Hipertensión")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Cuadro 2
+                    </button>
+                  </div>
                 </div>
                 <textarea
-                  readOnly
-                  rows={8}
-                  value={htaBox2}
-                  className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
+                  rows={7}
+                  value={effectiveHtaBox2}
+                  onChange={(e) => setHtaBox2Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
                 />
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                    Cuadro 3 (No modificable): Resto de la información
-                    (Diagnósticos, Tratamiento, Indicaciones y Médico)
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Cuadro 3 (Modificable): Diagnósticos, Recomendaciones y Seguimiento
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyTextHelper(htaBox3, "Cuadro 3 de Hipertensión")
-                    }
-                    className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
-                  >
-                    Copiar Cuadro 3
-                  </button>
+                  <div className="flex gap-1.5 print:hidden">
+                    {htaBox3Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setHtaBox3Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveHtaBox3, "Cuadro 3 de Hipertensión")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Cuadro 3
+                    </button>
+                  </div>
                 </div>
                 <textarea
-                  readOnly
                   rows={7}
-                  value={htaBox3}
-                  className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
+                  value={effectiveHtaBox3}
+                  onChange={(e) => setHtaBox3Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
                 />
               </div>
             </div>
@@ -3530,25 +3436,24 @@ export default function App() {
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: VISTA PREVIA E IMPRESIÓN DE CONTROL PRENATAL (1 CUADRO NO MODIFICABLE) */}
+      {/* VENTANA EMERGENTE: CONTROL PRENATAL (1 CUADRO MODIFICABLE E IMPRIMIBLE) */}
       {activeWindow === "prenatal" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#123C50] bg-white p-4 shadow-2xl sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE9E6] pb-3 print:hidden">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
-                <h2 className="text-lg font-extrabold text-[#123C50]">
-                  VISTA PREVIA DE IMPRESIÓN · HOJA DE CONTROL PRENATAL
+                <h2 className="text-lg font-extrabold text-[#0F2D3D]">
+                  HOJA DE CONTROL PRENATAL · CUADRO ÚNICO MODIFICABLE
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Toda la información en orden en un solo cuadro de texto no
-                  modificable
+                  Toda la información concatenada en un solo cuadro editable e imprimible
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="rounded-xl bg-[#123C50] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#18A69A]"
+                  className="rounded-xl bg-[#0F2D3D] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0D9488]"
                 >
                   🖨 Imprimir
                 </button>
@@ -3557,10 +3462,10 @@ export default function App() {
                   onClick={() =>
                     downloadNoteAsFile(
                       "nota-control-prenatal.txt",
-                      prenatalSingleBox,
+                      effectivePrenatalBox,
                     )
                   }
-                  className="rounded-xl bg-[#18A69A] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#148B80]"
+                  className="rounded-xl bg-[#0D9488] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
                 >
                   💾 Guardar archivo
                 </button>
@@ -3572,13 +3477,13 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro Único: Nota Integral de Control Prenatal en Orden",
-                          content: prenatalSingleBox,
+                            "Cuadro Único: Nota Integral de Control Prenatal",
+                          content: effectivePrenatalBox,
                         },
                       ],
                     )
                   }
-                  className="rounded-xl border border-[#2456C7] bg-white px-3 py-2 text-xs font-bold text-[#2456C7]"
+                  className="rounded-xl border border-[#0284C7] bg-white px-3 py-2 text-xs font-bold text-[#0284C7]"
                 >
                   Abrir en pestaña independiente ↗
                 </button>
@@ -3593,33 +3498,188 @@ export default function App() {
             </div>
 
             {copyFeedback && (
-              <p className="mt-3 rounded-lg bg-[#E9F4F2] px-3 py-1.5 text-xs font-bold text-[#16877F] print:hidden">
+              <p className="mt-3 rounded-lg bg-[#EAF4F1] px-3 py-1.5 text-xs font-bold text-[#0F766E] print:hidden">
                 {copyFeedback}
               </p>
             )}
 
             <div className="mt-4">
               <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-xs font-extrabold uppercase text-[#123C50]">
-                  Cuadro Único (No modificable): Nota de Control Prenatal
-                  Completa en Orden
+                <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                  Cuadro Único (Modificable): Nota de Control Prenatal Completa
                 </label>
+                <div className="flex gap-1.5 print:hidden">
+                  {prenatalBoxOverride !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setPrenatalBoxOverride(null)}
+                      className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                    >
+                      ↻ Restablecer
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyTextHelper(effectivePrenatalBox, "Nota Prenatal")
+                    }
+                    className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                  >
+                    Copiar Nota Completa
+                  </button>
+                </div>
+              </div>
+              <textarea
+                rows={18}
+                value={effectivePrenatalBox}
+                onChange={(e) => setPrenatalBoxOverride(e.target.value)}
+                className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VENTANA EMERGENTE: CONSULTA GENERAL (2 CUADROS MODIFICABLES E IMPRIMIBLES COMO DIABETES) */}
+      {activeWindow === "general" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
+              <div>
+                <h2 className="text-lg font-extrabold text-[#0F2D3D]">
+                  FORMATO CONSULTA GENERAL · 2 CUADROS MODIFICABLES
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Información de la página inicial en 2 cuadros editables e imprimibles para el SIMF
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-xl bg-[#0F2D3D] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0D9488]"
+                >
+                  🖨 Imprimir
+                </button>
                 <button
                   type="button"
                   onClick={() =>
-                    copyTextHelper(prenatalSingleBox, "Nota Prenatal")
+                    downloadNoteAsFile(
+                      "nota-consulta-general.txt",
+                      effectiveGeneralBox1 + "\n\n" + effectiveGeneralBox2,
+                    )
                   }
-                  className="rounded-lg bg-[#E9F4F2] px-2.5 py-1 text-xs font-bold text-[#123C50] hover:bg-[#18A69A] hover:text-white print:hidden"
+                  className="rounded-xl bg-[#0D9488] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
                 >
-                  Copiar Nota Completa
+                  💾 Guardar archivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    openStandaloneBrowserPrintWindow(
+                      "Nota Médica - Consulta General",
+                      [
+                        {
+                          heading:
+                            "Cuadro 1: Paciente, Signos Vitales y Padecimiento Actual",
+                          content: effectiveGeneralBox1,
+                        },
+                        {
+                          heading:
+                            "Cuadro 2: Exploración Física, Diagnósticos CIE-10 y Recomendaciones",
+                          content: effectiveGeneralBox2,
+                        },
+                      ],
+                    )
+                  }
+                  className="rounded-xl border border-[#0284C7] bg-white px-3 py-2 text-xs font-bold text-[#0284C7]"
+                >
+                  Abrir en pestaña independiente ↗
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveWindow(null)}
+                  className="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700"
+                >
+                  Cerrar ✕
                 </button>
               </div>
-              <textarea
-                readOnly
-                rows={18}
-                value={prenatalSingleBox}
-                className="w-full rounded-xl border-2 border-[#123C50] bg-[#F8FBFA] p-3 font-mono text-xs leading-relaxed text-[#123C50] outline-none"
-              />
+            </div>
+
+            {copyFeedback && (
+              <p className="mt-3 rounded-lg bg-[#EAF4F1] px-3 py-1.5 text-xs font-bold text-[#0F766E] print:hidden">
+                {copyFeedback}
+              </p>
+            )}
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Cuadro 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
+                  </label>
+                  <div className="flex gap-1.5 print:hidden">
+                    {generalBox1Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setGeneralBox1Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveGeneralBox1, "Cuadro 1 Consulta General")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Cuadro 1
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  rows={9}
+                  value={effectiveGeneralBox1}
+                  onChange={(e) => setGeneralBox1Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
+                />
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
+                    Cuadro 2 (Modificable): Exploración física, Diagnósticos y Recomendaciones
+                  </label>
+                  <div className="flex gap-1.5 print:hidden">
+                    {generalBox2Override !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setGeneralBox2Override(null)}
+                        className="rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1 text-xs font-bold text-[#0F766E]"
+                      >
+                        ↻ Restablecer
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTextHelper(effectiveGeneralBox2, "Cuadro 2 Consulta General")
+                      }
+                      className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                    >
+                      Copiar Cuadro 2
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  rows={9}
+                  value={effectiveGeneralBox2}
+                  onChange={(e) => setGeneralBox2Override(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[#0F2D3D] bg-white p-3 font-mono text-xs leading-relaxed text-[#0F2D3D] outline-none focus:border-[#0D9488]"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -3628,10 +3688,10 @@ export default function App() {
       {/* VENTANA EMERGENTE EXCLUSIVA DE RECETA MÉDICA LISTA PARA IMPRIMIR O GUARDAR */}
       {activeWindow === "receta" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border-2 border-[#123C50] bg-white p-5 shadow-2xl sm:p-7">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE9E6] pb-3 print:hidden">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-5 shadow-2xl sm:p-7">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
-                <h2 className="text-lg font-extrabold text-[#123C50]">
+                <h2 className="text-lg font-extrabold text-[#0F2D3D]">
                   VENTANA DE IMPRESIÓN · RECETA MÉDICA INDIVIDUAL
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -3643,7 +3703,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="rounded-xl bg-[#123C50] px-4 py-2 text-xs font-bold text-white hover:bg-[#18A69A]"
+                  className="rounded-xl bg-[#0F2D3D] px-4 py-2 text-xs font-bold text-white hover:bg-[#0D9488]"
                 >
                   🖨 Imprimir Receta / PDF
                 </button>
@@ -3671,7 +3731,7 @@ export default function App() {
                       ].join("\n"),
                     )
                   }
-                  className="rounded-xl bg-[#18A69A] px-4 py-2 text-xs font-bold text-white hover:bg-[#148B80]"
+                  className="rounded-xl bg-[#0D9488] px-4 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
                 >
                   💾 Guardar Receta
                 </button>
@@ -3685,21 +3745,21 @@ export default function App() {
               </div>
             </div>
 
-            <div className="rounded-xl border-2 border-[#123C50] bg-white p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-[#123C50] pb-3">
+            <div className="rounded-xl border-2 border-[#0F2D3D] bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-[#0F2D3D] pb-3">
                 <div>
-                  <h3 className="text-xl font-extrabold text-[#123C50]">
+                  <h3 className="text-xl font-extrabold text-[#0F2D3D]">
                     RECETA MÉDICA
                   </h3>
-                  <p className="text-xs font-semibold text-[#16877F]">
+                  <p className="text-xs font-semibold text-[#0F766E]">
                     {professionalDetails.unidad}
                   </p>
                   <p className="text-xs text-slate-500">
                     Fecha de expedición:{" "}
-                    {new Date().toLocaleDateString("es-MX")}
+                    {currentDateStr}
                   </p>
                 </div>
-                <div className="text-right text-xs text-[#123C50]">
+                <div className="text-right text-xs text-[#0F2D3D]">
                   <p className="text-sm font-extrabold">
                     {professionalDetails.nombre}
                   </p>
@@ -3733,7 +3793,7 @@ export default function App() {
               </div>
 
               <div className="mt-4">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123C50]">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0F2D3D]">
                   Rp. Prescripción Farmacológica:
                 </h4>
                 {prescribedMedications.length === 0 ? (
@@ -3743,7 +3803,7 @@ export default function App() {
                 ) : (
                   <ol className="mt-2 list-decimal space-y-2 pl-5 text-xs sm:text-sm">
                     {prescribedMedications.map((m) => (
-                      <li key={m.id} className="border-b border-[#E9F4F2] pb-1.5">
+                      <li key={m.id} className="border-b border-[#EAF4F1] pb-1.5">
                         <strong>{m.name}</strong> ({m.presentacion})
                         <br />
                         <span>
@@ -3757,8 +3817,8 @@ export default function App() {
                 )}
               </div>
 
-              <div className="mt-4 border-t border-[#DCE9E6] pt-3">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123C50]">
+              <div className="mt-4 border-t border-[#D6E6E1] pt-3">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0F2D3D]">
                   Indicaciones no farmacológicas y signos de alarma:
                 </h4>
                 <p className="mt-1 whitespace-pre-wrap text-xs sm:text-sm">
@@ -3766,7 +3826,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="mt-8 border-t border-[#DCE9E6] pt-4 text-center text-xs text-[#123C50]">
+              <div className="mt-8 border-t border-[#D6E6E1] pt-4 text-center text-xs text-[#0F2D3D]">
                 <p className="font-bold">
                   __________________________________________
                 </p>
@@ -3781,13 +3841,13 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL PARA PERSONALIZAR EL PERFIL DEL MÉDICO */}
+      {/* MODAL PARA PERSONALIZAR EL PERFIL DEL MÉDICO Y HERRAMIENTAS */}
       {activeWindow === "perfil" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#A9CFF0] bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#E9F4F2] pb-3">
-              <h2 className="text-base font-extrabold text-[#123C50]">
-                Personalizar Perfil del Médico
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4">
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#A9CFF0] bg-white p-4 shadow-2xl sm:p-5">
+            <div className="flex items-center justify-between border-b border-[#EAF4F1] pb-3">
+              <h2 className="text-base font-extrabold text-[#0F2D3D]">
+                Personalizar Perfil y Herramientas
               </h2>
               <button
                 type="button"
@@ -3798,8 +3858,7 @@ export default function App() {
               </button>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Tus datos quedan guardados en tu sesión y aparecen precargados en
-              la Hoja de Consulta y en la Receta Médica:
+              Tus datos y plantillas quedan guardados en tu sesión y aparecen precargados en tus notas y recetas:
             </p>
             <div className="mt-3 space-y-3">
               {DOCTOR_PROFILE_FIELDS.map((fieldItem) => (
@@ -3816,14 +3875,181 @@ export default function App() {
                   }
                 />
               ))}
+              <label className="block text-xs font-semibold text-[#0F2D3D]">
+                Plantilla de ficha de paciente (opcional)
+                <textarea
+                  name="pacientePlantilla"
+                  rows={2}
+                  value={professionalDetails.pacientePlantilla}
+                  onChange={(event) => {
+                    const nextVal = event.target.value;
+                    setProfessionalDetails((prev) => ({
+                      ...prev,
+                      pacientePlantilla: nextVal,
+                    }));
+                  }}
+                  placeholder={DEFAULT_PATIENT_TEMPLATE}
+                  className={inputClassName + " resize-y"}
+                />
+              </label>
+              <label className="block text-xs font-semibold text-[#0F2D3D]">
+                Plantilla de padecimiento actual (opcional)
+                <textarea
+                  name="padecimientoPlantilla"
+                  rows={2}
+                  value={professionalDetails.padecimientoPlantilla}
+                  onChange={(event) => {
+                    const nextVal = event.target.value;
+                    setProfessionalDetails((prev) => ({
+                      ...prev,
+                      padecimientoPlantilla: nextVal,
+                    }));
+                  }}
+                  placeholder={DEFAULT_PADECIMIENTO_TEMPLATE}
+                  className={inputClassName + " resize-y"}
+                />
+              </label>
+              <label className="block text-xs font-semibold text-[#0F2D3D]">
+                Exploración física o formato propio (aparecerá siempre en tus notas)
+                <textarea
+                  name="exploracionPersonalizada"
+                  rows={4}
+                  value={professionalDetails.exploracionPersonalizada}
+                  onChange={(event) => {
+                    const nextVal = event.target.value;
+                    setProfessionalDetails((prev) => ({
+                      ...prev,
+                      exploracionPersonalizada: nextVal,
+                    }));
+                  }}
+                  placeholder="Escribe aquí tu formato personalizado de exploración física. Si lo dejas vacío, se usará el formato estándar."
+                  className={inputClassName + " resize-y"}
+                />
+              </label>
+
+              <div className="border-t border-[#EAF4F1] pt-3">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                  Herramientas / Calculadoras de la Barra Lateral
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Marca las calculadoras que utilizas en consulta:
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {Object.entries(SIDEBAR_CALCULATORS).map(([id, calc]) => (
+                    <label
+                      key={id}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-[#D6E6E1] bg-[#F8FBFA] px-3 py-2 text-xs font-bold text-[#0F2D3D]"
+                    >
+                      <span>{calc.title}</span>
+                      <input
+                        type="checkbox"
+                        checked={enabledCalcIds.includes(id)}
+                        onChange={() => toggleCalculatorTool(id)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             <button
               type="button"
-              onClick={() => setActiveWindow(null)}
-              className="mt-4 w-full rounded-xl bg-[#18A69A] py-2.5 text-sm font-extrabold text-white hover:bg-[#123C50]"
+              onClick={() => {
+                if (!exploracionEdited) {
+                  setExploracion(
+                    professionalDetails.exploracionPersonalizada.trim() ||
+                      defaultPhysicalExamText,
+                  );
+                }
+                setActiveWindow(null);
+              }}
+              className="mt-4 w-full rounded-xl bg-[#0D9488] py-2.5 text-sm font-extrabold text-white hover:bg-[#0F2D3D]"
             >
               Guardar y Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA IDENTIFICACIÓN DEL PACIENTE POR QR / APP */}
+      {activeWindow === "qr" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#A9CFF0] bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#EAF4F1] pb-3">
+              <h2 className="text-base font-extrabold text-[#0F2D3D]">
+                Identificación del Paciente (QR / App)
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  stopQrReader();
+                  setActiveWindow(null);
+                }}
+                className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold"
+              >
+                Cerrar ✕
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Escanea el código QR del paciente o pega su código temporal ESD1 para precargar sus datos y signos vitales en la nota.
+            </p>
+            <div className="mt-3 space-y-2.5">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (qrScanning) stopQrReader();
+                    else startQrReader();
+                  }}
+                  className="rounded-lg bg-[#0284C7] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0F2D3D]"
+                >
+                  {qrScanning ? "Detener cámara" : "📷 Escanear QR"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open("/pacientes/qr", "_blank", "noopener,noreferrer");
+                  }}
+                  className="rounded-lg border border-[#D6E6E1] bg-white px-3 py-1.5 text-xs font-bold text-[#0F766E] hover:bg-[#EAF4F1]"
+                >
+                  Abrir Link QR ↗
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={manualQrCodeInput}
+                  onChange={(e) => setManualQrCodeInput(e.target.value)}
+                  placeholder="Pegar código ESD1..."
+                  className="min-w-0 flex-1 rounded-lg border border-[#D6E6E1] bg-white px-2.5 py-1.5 text-xs text-[#0F2D3D] outline-none focus:border-[#0D9488]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    applyMeasurementQr(manualQrCodeInput);
+                  }}
+                  className="shrink-0 rounded-lg bg-[#0F2D3D] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0D9488]"
+                >
+                  Cargar
+                </button>
+              </div>
+              <div id="qr-lectura" aria-live="polite">
+                <video
+                  ref={qrVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={
+                    "max-h-48 w-full rounded-lg bg-black object-contain " +
+                    (qrScanning ? "block" : "hidden")
+                  }
+                />
+                {qrStatus && (
+                  <p className="mt-1 text-xs font-semibold text-[#0F766E]" role="status">
+                    {qrStatus}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -3832,8 +4058,8 @@ export default function App() {
       {activeWindow === "herramientas" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-[#A9CFF0] bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#E9F4F2] pb-3">
-              <h2 className="text-base font-extrabold text-[#123C50]">
+            <div className="flex items-center justify-between border-b border-[#EAF4F1] pb-3">
+              <h2 className="text-base font-extrabold text-[#0F2D3D]">
                 Personalizar Herramientas de la Barra Lateral
               </h2>
               <button
@@ -3852,7 +4078,7 @@ export default function App() {
               {Object.entries(SIDEBAR_CALCULATORS).map(([id, calc]) => (
                 <label
                   key={id}
-                  className="flex cursor-pointer items-center justify-between rounded-xl border border-[#DCE9E6] bg-[#F8FBFA] px-3 py-2 text-xs font-bold text-[#123C50]"
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-[#D6E6E1] bg-[#F8FBFA] px-3 py-2 text-xs font-bold text-[#0F2D3D]"
                 >
                   <span>{calc.title}</span>
                   <input
@@ -3866,7 +4092,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setActiveWindow(null)}
-              className="mt-4 w-full rounded-xl bg-[#123C50] py-2.5 text-sm font-extrabold text-white hover:bg-[#18A69A]"
+              className="mt-4 w-full rounded-xl bg-[#0F2D3D] py-2.5 text-sm font-extrabold text-white hover:bg-[#0D9488]"
             >
               Listo
             </button>
