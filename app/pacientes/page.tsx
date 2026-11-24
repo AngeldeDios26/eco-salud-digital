@@ -5,6 +5,15 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
 import { PatientBrandLogo } from "../../components/BrandLogo";
+import {
+  deletePatientHistoryFromCloud,
+  insertPatientHistoryToCloud,
+  loadPatientDataFromCloud,
+  signInSupabaseIfConfigured,
+  signOutSupabaseIfConfigured,
+  signUpSupabaseIfConfigured,
+  syncPatientProfileToCloud,
+} from "../../lib/supabase/cloud-sync";
 
 export type LocalPatientHistoryEntry = {
   id: string;
@@ -146,6 +155,32 @@ export default function PacientesAppPage() {
       } catch {
         // Ignorar si localStorage no está disponible
       }
+
+      void loadPatientDataFromCloud().then((cloud) => {
+        if (!active) return;
+        if (cloud.profile) {
+          setProfile(cloud.profile);
+          try {
+            window.localStorage.setItem(
+              PATIENT_PROFILE_KEY,
+              JSON.stringify(cloud.profile),
+            );
+          } catch {
+            // Ignorar
+          }
+        }
+        if (cloud.history && cloud.history.length > 0) {
+          setHistory(cloud.history);
+          try {
+            window.localStorage.setItem(
+              PATIENT_HISTORY_KEY,
+              JSON.stringify(cloud.history),
+            );
+          } catch {
+            // Ignorar
+          }
+        }
+      });
     });
     return () => {
       active = false;
@@ -162,33 +197,80 @@ export default function PacientesAppPage() {
     return () => window.clearTimeout(timer);
   }, [qrCode, qrExpires]);
 
-  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword.trim()) {
       setAuthError("Ingresa tu correo o teléfono y tu contraseña.");
       return;
     }
     setAuthError("");
+    const res = await signInSupabaseIfConfigured(authEmail, authPassword);
+    if (!res.ok) {
+      setAuthError(res.error ?? "No se pudo iniciar sesión.");
+      return;
+    }
     setIsAuthenticated(true);
     try {
       window.localStorage.setItem(PATIENT_AUTH_SESSION_KEY, "active");
     } catch {
       // Ignorar
     }
+    if (res.mode === "supabase") {
+      const cloud = await loadPatientDataFromCloud();
+      if (cloud.profile) {
+        setProfile(cloud.profile);
+        try {
+          window.localStorage.setItem(
+            PATIENT_PROFILE_KEY,
+            JSON.stringify(cloud.profile),
+          );
+        } catch {
+          // Ignorar
+        }
+      }
+      if (cloud.history) {
+        setHistory(cloud.history);
+        try {
+          window.localStorage.setItem(
+            PATIENT_HISTORY_KEY,
+            JSON.stringify(cloud.history),
+          );
+        } catch {
+          // Ignorar
+        }
+      }
+    }
   };
 
-  const handleRegister = (e: FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!authName.trim() || !authEmail.trim() || !authPassword.trim()) {
       setAuthError("Completa tu nombre, correo/teléfono y contraseña.");
       return;
     }
     setAuthError("");
+    const res = await signUpSupabaseIfConfigured(authEmail, authPassword, {
+      nombre_completo: authName.trim(),
+      role: "patient",
+    });
+    if (!res.ok) {
+      setAuthError(res.error ?? "No se pudo completar el registro.");
+      return;
+    }
+    if (res.needsEmailConfirmation) {
+      setAuthError("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
+      setAuthMode("login");
+      return;
+    }
     setIsAuthenticated(true);
-    setProfile((prev) => ({
-      ...prev,
-      nombre: prev.nombre || authName.trim(),
-    }));
+    const nextProfile = {
+      ...profile,
+      nombre: profile.nombre || authName.trim(),
+    };
+    setProfile(nextProfile);
+    if (res.mode === "supabase") {
+      await syncPatientProfileToCloud(nextProfile);
+    }
     try {
       window.localStorage.setItem(PATIENT_AUTH_SESSION_KEY, "active");
       window.localStorage.setItem(
@@ -202,6 +284,7 @@ export default function PacientesAppPage() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    void signOutSupabaseIfConfigured();
     try {
       window.localStorage.setItem(PATIENT_AUTH_SESSION_KEY, "logged_out");
     } catch {
@@ -209,30 +292,37 @@ export default function PacientesAppPage() {
     }
   };
 
-  const saveProfile = (e: FormEvent<HTMLFormElement>) => {
+  const saveProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       window.localStorage.setItem(PATIENT_PROFILE_KEY, JSON.stringify(profile));
+      const synced = await syncPatientProfileToCloud(profile);
       setProfileStatus(
-        "Datos y antecedentes guardados de forma segura en tu celular.",
+        synced
+          ? "Datos y antecedentes guardados en tu celular y sincronizados en la nube."
+          : "Datos y antecedentes guardados de forma segura en tu celular.",
       );
     } catch {
       setProfileStatus("No se pudo guardar en este navegador.");
     }
   };
 
-  const addHistoryEntry = (e: FormEvent<HTMLFormElement>) => {
+  const addHistoryEntry = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!diagnostico.trim() || !tratamiento.trim()) {
       setHistoryStatus("Escribe al menos el diagnóstico y el tratamiento.");
       return;
     }
-    const newEntry: LocalPatientHistoryEntry = {
-      id: `hist-${Date.now()}`,
+    const entryBase = {
       fecha: fecha || new Date().toISOString().slice(0, 10),
       diagnostico: diagnostico.trim(),
       tratamiento: tratamiento.trim(),
       atendidoPor: atendidoPor.trim() || "Médico tratante",
+    };
+    const cloudId = await insertPatientHistoryToCloud(entryBase);
+    const newEntry: LocalPatientHistoryEntry = {
+      id: cloudId ?? `hist-${Date.now()}`,
+      ...entryBase,
     };
     const next = [newEntry, ...history];
     setHistory(next);
@@ -244,12 +334,17 @@ export default function PacientesAppPage() {
     setDiagnostico("");
     setTratamiento("");
     setAtendidoPor("");
-    setHistoryStatus("Consulta agregada a tu historial.");
+    setHistoryStatus(
+      cloudId
+        ? "Consulta agregada a tu historial y respaldada en la nube."
+        : "Consulta agregada a tu historial.",
+    );
   };
 
   const removeHistoryEntry = (id: string) => {
     const next = history.filter((item) => item.id !== id);
     setHistory(next);
+    void deletePatientHistoryFromCloud(id);
     try {
       window.localStorage.setItem(PATIENT_HISTORY_KEY, JSON.stringify(next));
     } catch {

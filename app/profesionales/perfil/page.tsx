@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { createClient } from "../../../lib/supabase/client";
+import {
+  createClient,
+  isSupabaseBrowserConfigured,
+} from "../../../lib/supabase/client";
+import {
+  loadProfessionalProfileFromCloud,
+  syncProfessionalProfileToCloud,
+} from "../../../lib/supabase/cloud-sync";
 import {
   emptyProfessionalProfile,
   normalizeProfessionalProfile,
@@ -38,42 +45,54 @@ export default function ProfessionalProfilePage() {
       }
     });
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    if (isSupabaseBrowserConfigured()) {
       const client = createClient();
-      void client.auth.getUser().then(({ data, error }) => {
-        if (!active || error || !data.user) return;
-        const metadata = data.user.user_metadata ?? {};
-        const readText = (...keys: string[]) => keys.map((key) => metadata[key]).find((value) => typeof value === "string" && value.trim()) as string | undefined ?? "";
-        const fromAuth: ProfessionalProfile = {
-          nombre: readText("nombre_completo", "nombreCompleto", "full_name", "name"),
-          matricula: readText("matricula", "professional_id", "registration_number"),
-          cedula: readText("cedula_profesional", "cedulaProfesional", "professional_license"),
-          unidad: readText("unidad_medica", "unidadMedica", "medical_unit"),
-          exploracionPersonalizada: "",
-          pacientePlantilla: "",
-          padecimientoPlantilla: "",
-          ginecoPlantilla: "",
-        };
-        setProfile((current) => ({
-          nombre: current.nombre || fromAuth.nombre,
-          matricula: current.matricula || fromAuth.matricula,
-          cedula: current.cedula || fromAuth.cedula,
-          unidad: current.unidad || fromAuth.unidad,
-          exploracionPersonalizada: current.exploracionPersonalizada,
-          pacientePlantilla: current.pacientePlantilla,
-          padecimientoPlantilla: current.padecimientoPlantilla,
-          ginecoPlantilla: current.ginecoPlantilla,
-        }));
-        setStatus("Se cargaron los datos disponibles del perfil profesional.");
-      }).catch(() => {
-        if (active && !readProfessionalProfile()) setStatus("No se pudo consultar el perfil. Puedes completar los datos para esta demostración.");
-      });
+      void Promise.all([
+        client.auth.getUser(),
+        loadProfessionalProfileFromCloud(),
+      ])
+        .then(([{ data, error }, cloudProfile]) => {
+          if (!active) return;
+          if (cloudProfile) {
+            saveProfessionalProfile(cloudProfile);
+            setProfile(cloudProfile);
+            setStatus("Se cargó tu perfil y plantillas desde la nube.");
+            return;
+          }
+          if (error || !data.user) return;
+          const metadata = data.user.user_metadata ?? {};
+          const readText = (...keys: string[]) => keys.map((key) => metadata[key]).find((value) => typeof value === "string" && value.trim()) as string | undefined ?? "";
+          const fromAuth: ProfessionalProfile = {
+            nombre: readText("nombre_completo", "nombreCompleto", "full_name", "name"),
+            matricula: readText("matricula", "professional_id", "registration_number"),
+            cedula: readText("cedula_profesional", "cedulaProfesional", "professional_license"),
+            unidad: readText("unidad_medica", "unidadMedica", "medical_unit"),
+            exploracionPersonalizada: "",
+            pacientePlantilla: "",
+            padecimientoPlantilla: "",
+            ginecoPlantilla: "",
+          };
+          setProfile((current) => ({
+            nombre: current.nombre || fromAuth.nombre,
+            matricula: current.matricula || fromAuth.matricula,
+            cedula: current.cedula || fromAuth.cedula,
+            unidad: current.unidad || fromAuth.unidad,
+            exploracionPersonalizada: current.exploracionPersonalizada,
+            pacientePlantilla: current.pacientePlantilla,
+            padecimientoPlantilla: current.padecimientoPlantilla,
+            ginecoPlantilla: current.ginecoPlantilla,
+          }));
+          setStatus("Se cargaron los datos disponibles del perfil profesional.");
+        })
+        .catch(() => {
+          if (active && !readProfessionalProfile()) setStatus("No se pudo consultar el perfil. Puedes completar los datos para esta demostración.");
+        });
     }
 
     return () => { active = false; };
   }, []);
 
-  const save = (event: FormEvent<HTMLFormElement>) => {
+  const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalized = normalizeProfessionalProfile(profile);
     if (!normalized?.nombre) {
@@ -83,7 +102,12 @@ export default function ProfessionalProfilePage() {
     try {
       if (!saveProfessionalProfile(normalized)) throw new Error("El almacenamiento local no está disponible.");
       setProfile(normalized);
-      setStatus("Perfil guardado en este navegador. Se usará para completar los datos del médico en futuras consultas.");
+      const synced = await syncProfessionalProfileToCloud(normalized);
+      setStatus(
+        synced
+          ? "Perfil y plantillas guardados en este navegador y sincronizados en la nube."
+          : "Perfil guardado en este navegador. Se usará para completar los datos del médico en futuras consultas.",
+      );
     } catch {
       setStatus("No se pudo guardar el perfil en este navegador. Puedes completar los datos manualmente en la consulta.");
     }

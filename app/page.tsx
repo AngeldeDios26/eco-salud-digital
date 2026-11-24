@@ -8,6 +8,12 @@ import {
   readProfessionalProfile,
   saveProfessionalProfile,
 } from "../lib/professional-profile";
+import {
+  loadProfessionalProfileFromCloud,
+  signInSupabaseIfConfigured,
+  signUpSupabaseIfConfigured,
+  syncProfessionalProfileToCloud,
+} from "../lib/supabase/cloud-sync";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D6E6E1] bg-white px-3.5 py-2.5 text-sm text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15";
@@ -22,6 +28,7 @@ export default function Home() {
   const [matricula, setMatricula] = useState("");
   const [unidad, setUnidad] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -40,30 +47,57 @@ export default function Home() {
     };
   }, []);
 
-  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError("Ingresa tu correo electrónico o matrícula y tu contraseña.");
       return;
     }
     setError("");
+    setBusy(true);
+    const res = await signInSupabaseIfConfigured(email, password);
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.error ?? "No se pudo iniciar sesión.");
+      return;
+    }
+    if (res.mode === "supabase") {
+      const cloudProfile = await loadProfessionalProfileFromCloud();
+      if (cloudProfile) {
+        saveProfessionalProfile(cloudProfile);
+      }
+    }
     try {
       window.localStorage.setItem("esd_auth_session", "active");
     } catch {
       // Ignorar
     }
+    setBusy(false);
     router.push("/profesionales/consulta/hoja-clinica");
   };
 
-  const handleRegister = (e: FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!nombre.trim() || !cedula.trim() || !email.trim() || !password.trim()) {
       setError("Completa nombre, cédula, correo y contraseña para registrarte.");
       return;
     }
     setError("");
+    setBusy(true);
+    const res = await signUpSupabaseIfConfigured(email, password, {
+      nombre_completo: nombre.trim(),
+      cedula_profesional: cedula.trim(),
+      matricula: matricula.trim(),
+      unidad_medica: unidad.trim(),
+      role: "professional",
+    });
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.error ?? "No se pudo completar el registro.");
+      return;
+    }
     const existing = readProfessionalProfile();
-    saveProfessionalProfile({
+    const nextProfile = {
       nombre: nombre.trim(),
       cedula: cedula.trim(),
       matricula: matricula.trim(),
@@ -72,7 +106,11 @@ export default function Home() {
       pacientePlantilla: existing?.pacientePlantilla ?? "",
       padecimientoPlantilla: existing?.padecimientoPlantilla ?? "",
       ginecoPlantilla: existing?.ginecoPlantilla ?? "",
-    });
+    };
+    saveProfessionalProfile(nextProfile);
+    if (res.mode === "supabase" && !res.needsEmailConfirmation) {
+      await syncProfessionalProfileToCloud(nextProfile);
+    }
     try {
       window.localStorage.setItem("esd_auth_session", "active");
       window.localStorage.setItem(
@@ -86,6 +124,12 @@ export default function Home() {
       );
     } catch {
       // Ignorar
+    }
+    setBusy(false);
+    if (res.needsEmailConfirmation) {
+      setError("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
+      setTab("login");
+      return;
     }
     router.push("/profesionales/consulta/hoja-clinica");
   };
@@ -170,9 +214,10 @@ export default function Home() {
             </label>
             <button
               type="submit"
-              className="w-full rounded-xl bg-[#0F2D3D] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0D9488]"
+              disabled={busy}
+              className="w-full rounded-xl bg-[#0F2D3D] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0D9488] disabled:opacity-60"
             >
-              Entrar a Hoja de Consulta →
+              {busy ? "Verificando..." : "Entrar a Hoja de Consulta →"}
             </button>
           </form>
         ) : (
@@ -241,9 +286,10 @@ export default function Home() {
             </label>
             <button
               type="submit"
-              className="w-full rounded-xl bg-[#0D9488] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0F2D3D]"
+              disabled={busy}
+              className="w-full rounded-xl bg-[#0D9488] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0F2D3D] disabled:opacity-60"
             >
-              Registrarme y Entrar →
+              {busy ? "Creando cuenta..." : "Registrarme y Entrar →"}
             </button>
           </form>
         )}
