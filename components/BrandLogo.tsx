@@ -64,19 +64,12 @@ export function PatientBrandLogo({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <circle cx="32" cy="20" r="9" fill="#FFFFFF" />
-        <path
-          d="M16 50C16 40.6112 23.1634 33 32 33C40.8366 33 48 40.6112 48 50"
-          stroke="#FFFFFF"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M44 14V24M39 19H49"
-          stroke="#E0F2FE"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-        />
+        {/* Cruz invertida: línea vertical (tallo de la P) y línea horizontal abajo */}
+        <rect x="17" y="10" width="9" height="44" rx="4.5" fill="#FFFFFF" />
+        <rect x="8" y="38" width="27" height="8.5" rx="4.25" fill="#FFFFFF" />
+        {/* Círculo cercano arriba a la derecha formando discretamente la P y cabeza del paciente */}
+        <circle cx="39" cy="21" r="10.5" fill="#FFFFFF" />
+        <circle cx="39" cy="21" r="4" fill="#0D9488" />
       </svg>
     </div>
   );
