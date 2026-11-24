@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import jsQR from "jsqr";
 import { BrandLogo } from "../../../../components/BrandLogo";
 import {
   imssMedicationsCatalog,
@@ -1722,15 +1723,6 @@ export default function App() {
   };
 
   const startQrReader = async () => {
-    const Detector = (
-      window as Window & { BarcodeDetector?: QrDetectorConstructor }
-    ).BarcodeDetector;
-    if (!Detector) {
-      setQrStatus(
-        "Tu navegador actual no soporta escaneo directo por cámara; pega el código ESD1 del paciente en la casilla de Telemedicina a un lado.",
-      );
-      return;
-    }
     if (!navigator.mediaDevices?.getUserMedia || !qrVideoRef.current) {
       setQrStatus(
         "No se puede acceder a la cámara. Revisa el permiso del navegador o pega el código ESD1 manualmente.",
@@ -1746,7 +1738,14 @@ export default function App() {
       qrStreamRef.current = stream;
       qrVideoRef.current.srcObject = stream;
       await qrVideoRef.current.play();
-      const detector = new Detector({ formats: ["qr_code"] });
+
+      const Detector = (
+        window as Window & { BarcodeDetector?: QrDetectorConstructor }
+      ).BarcodeDetector;
+      const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
       setQrScanning(true);
       setQrStatus("Apunta la cámara al QR temporal del paciente.");
 
@@ -1754,10 +1753,35 @@ export default function App() {
         const video = qrVideoRef.current;
         if (!qrStreamRef.current || !video) return;
         try {
-          const detected = await detector.detect(video);
-          if (detected.length) {
-            void applyMeasurementQr(detected[0].rawValue);
-            return;
+          if (video.readyState >= 2) {
+            if (detector) {
+              const detected = await detector.detect(video);
+              if (detected.length) {
+                void applyMeasurementQr(detected[0].rawValue);
+                return;
+              }
+            }
+            if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+              );
+              const decoded = jsQR(
+                imageData.data,
+                imageData.width,
+                imageData.height,
+                { inversionAttempts: "attemptBoth" },
+              );
+              if (decoded?.data) {
+                void applyMeasurementQr(decoded.data);
+                return;
+              }
+            }
           }
           qrFrameRef.current = requestAnimationFrame(() => {
             void scan();
@@ -1775,6 +1799,36 @@ export default function App() {
     } catch {
       stopQrReader();
       setQrStatus("Permiso de cámara denegado o cámara no disponible.");
+    }
+  };
+
+  const handleQrImageUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setQrStatus("Leyendo código QR desde imagen…");
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setQrStatus("No se pudo procesar la imagen.");
+        return;
+      }
+      ctx.drawImage(bitmap, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const decoded = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "attemptBoth",
+      });
+      if (decoded?.data) {
+        await applyMeasurementQr(decoded.data);
+      } else {
+        setQrStatus(
+          "No se detectó un QR válido en la foto. Acerca más la cámara o pega el código ESD1.",
+        );
+      }
+    } catch {
+      setQrStatus("No se pudo leer la imagen seleccionada.");
     }
   };
 
@@ -3960,6 +4014,20 @@ export default function App() {
                 >
                   {qrScanning ? "Detener cámara" : "📷 Escanear QR"}
                 </button>
+                <label className="cursor-pointer rounded-lg border border-[#D6E6E1] bg-white px-3 py-1.5 text-xs font-bold text-[#0F2D3D] hover:bg-[#EAF4F1]">
+                  📸 Foto / Imagen QR
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      void handleQrImageUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => {
