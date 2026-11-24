@@ -127,13 +127,6 @@ const DOCTOR_PROFILE_FIELDS: DoctorProfileFieldConfig[] = [
   },
 ];
 
-const CLINICAL_FORMAT_OPTIONS: ClinicalFormatOption[] = [
-  { key: "general", label: "Consulta General (Estándar)" },
-  { key: "diabetes", label: "Formato Diabetes Mellitus" },
-  { key: "hipertension", label: "Formato Hipertensión Arterial" },
-  { key: "prenatal", label: "Formato Control Prenatal" },
-];
-
 type PrintableClinicalFormat = {
   id: string;
   title: string;
@@ -661,20 +654,6 @@ const defaultAntecedents = [
   "Toxicomanías: Interrogados y negados",
 ].join("\n");
 
-const defaultGynecologic = [
-  "Menarca: Interrogados y negados",
-  "Ciclo menstrual (frecuencia, duración y características): Interrogados y negados",
-  "Fecha de última menstruación (FUM): Interrogados y negados",
-  "Inicio de vida sexual: Interrogados y negados",
-  "Método anticonceptivo: Interrogados y negados",
-  "Gestaciones (G): Interrogados y negados",
-  "Partos (P): Interrogados y negados",
-  "Cesáreas (C): Interrogados y negados",
-  "Abortos (A): Interrogados y negados",
-  "Complicaciones obstétricas: Interrogados y negados",
-  "Antecedentes ginecológicos relevantes: Interrogados y negados",
-].join("\n");
-
 // Catálogo de medicamentos importado desde lib/imss-medications.ts
 
 function buildPatientIndications(
@@ -868,8 +847,6 @@ export default function App() {
   const [newTableTitle, setNewTableTitle] = useState("");
   const [newTableUrl, setNewTableUrl] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
-  const [activePrintableFormatId, setActivePrintableFormatId] =
-    useState<string>("cdc-pediatria");
 
   const [clinicalFormat, setClinicalFormat] =
     useState<ClinicalFormat>("general");
@@ -919,7 +896,7 @@ export default function App() {
   const [patientNoteOverride, setPatientNoteOverride] = useState<string | null>(
     null,
   );
-  const [paraclinicosText, setParaclinicosText] =
+  const [, setParaclinicosText] =
     useState(defaultParaclinicos);
   const [exploracion, setExploracion] = useState(defaultPhysicalExamText);
   const [exploracionEdited, setExploracionEdited] = useState(false);
@@ -933,7 +910,7 @@ export default function App() {
     fondoOjo: "Pendiente valoración anual por Oftalmología.",
     metaGlucemica: "En control metabólico / ajuste higiénico-dietético.",
   });
-  const [htaFields, setHtaFields] = useState({
+  const [htaFields] = useState({
     taDomiciliaria: "",
     riesgoCardiovascular: "Moderado",
     danoOrganoBlanco:
@@ -978,10 +955,6 @@ export default function App() {
     PrescribedMedication[]
   >([]);
 
-  const [seguimientoText, setSeguimientoText] = useState(
-    "Cita abierta a Urgencias ante signos de alarma; control en Unidad de Medicina Familiar.",
-  );
-  const [prognosis, setPrognosis] = useState("Reservado a evolución");
   const [indicationsOverride, setIndicationsOverride] = useState<string | null>(
     null,
   );
@@ -998,7 +971,6 @@ export default function App() {
   const [saveMessage, setSaveMessage] = useState("");
   const [professionalDetails, setProfessionalDetails] =
     useState<ProfessionalDetails>(defaultRegisteredDoctor);
-  const [editingProfile, setEditingProfile] = useState(false);
 
   const [qrStatus, setQrStatus] = useState("");
   const [temporaryPatientHistory, setTemporaryPatientHistory] = useState<
@@ -1204,32 +1176,6 @@ export default function App() {
     [],
   );
 
-  const handleFumChange = (fumValue: string) => {
-    if (!fumValue) {
-      setPrenatalFields((prev) => ({ ...prev, fum: "", sdg: "", fpp: "" }));
-      return;
-    }
-    const fumTime = Date.parse(fumValue + "T00:00:00Z");
-    if (Number.isNaN(fumTime)) {
-      setPrenatalFields((prev) => ({ ...prev, fum: fumValue }));
-      return;
-    }
-    const now = new Date();
-    const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffDays = Math.floor((todayUTC - fumTime) / 86400000);
-    const weeks = Math.floor(diffDays / 7);
-    const days = diffDays % 7;
-    const fppDate = new Date(fumTime + 280 * 86400000)
-      .toISOString()
-      .slice(0, 10);
-    setPrenatalFields((prev) => ({
-      ...prev,
-      fum: fumValue,
-      sdg: diffDays >= 0 ? weeks + " semanas, " + days + " días" : "",
-      fpp: fppDate,
-    }));
-  };
-
   const normalizedDiagnosisQuery = normalizeSearchText(diagnosisQuery.trim());
   const diagnosisResults = !normalizedDiagnosisQuery
     ? null
@@ -1331,13 +1277,6 @@ export default function App() {
     setExploracionEdited(true);
     setExploracion(value);
   };
-
-  const antecedentsConcatenated =
-    sexo === "masculino"
-      ? antecedentsText
-      : antecedentsText +
-        "\n\nANTECEDENTES GINECOOBSTÉTRICOS:\n" +
-        gynecologicText;
 
   const diagnosesConcatenated =
     selectedDiagnoses.length > 0
@@ -1624,48 +1563,6 @@ export default function App() {
     popup.document.close();
   };
 
-  const measurementField = (
-    label: string,
-    name: string,
-    unit: string,
-    value = measurements[name],
-    readOnly = false,
-  ) => (
-    <label key={name} className="block text-sm font-semibold text-[#0F2D3D]">
-      {label}
-      <span className="mt-2 flex items-center gap-2">
-        <input
-          className={
-            inputClassName + " mt-0 min-w-0 flex-1 px-2 py-1.5 text-sm"
-          }
-          name={name}
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="any"
-          value={value}
-          readOnly={readOnly}
-          onChange={
-            readOnly
-              ? undefined
-              : (event) => {
-                  const nextValue = event.target.value;
-                  if (nextValue !== "" && Number(nextValue) < 0) return;
-                  setMeasurements((current) => ({
-                    ...current,
-                    [name]: nextValue,
-                  }));
-                }
-          }
-          aria-label={label + ", " + unit}
-        />
-        <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-slate-500">
-          {unit}
-        </span>
-      </span>
-    </label>
-  );
-
   const addDiagnosis = (entry: Cie10Entry) => {
     setSelectedDiagnoses((current) => {
       if (current.some((diagnosis) => diagnosis.code === entry.code))
@@ -1717,42 +1614,6 @@ export default function App() {
   const removeDiagnosis = (code: string) => {
     setSelectedDiagnoses((current) =>
       current.filter((diagnosis) => diagnosis.code !== code),
-    );
-  };
-
-  const addMedicationToList = () => {
-    const medName = selectedMedication.trim() || medicationQuery.trim();
-    if (!medName) return;
-    const newMed: PrescribedMedication = {
-      id: Date.now() + "-" + Math.random().toString(36).slice(2, 6),
-      code: selectedMedicationCode || "S/C",
-      name: medName,
-      presentacion: medicationFields.presentacion || "Tableta / Envase",
-      dosis: medicationFields.dosis || "1 unidad",
-      via: medicationFields.via || "Oral",
-      frecuencia: medicationFields.frecuencia || "Cada 12 horas",
-      duracion: medicationFields.duracion || "30 días",
-      cantidad: medicationFields.cantidad || "1 envase",
-      repeticiones: medicationFields.repeticiones || "0",
-    };
-    setPrescribedMedications((current) => [...current, newMed]);
-    setMedicationQuery("");
-    setSelectedMedication("");
-    setSelectedMedicationCode("");
-    setMedicationFields({
-      presentacion: "",
-      dosis: "",
-      via: "",
-      frecuencia: "",
-      duracion: "",
-      cantidad: "",
-      repeticiones: "",
-    });
-  };
-
-  const removeMedicationFromList = (id: string) => {
-    setPrescribedMedications((current) =>
-      current.filter((item) => item.id !== id),
     );
   };
 
@@ -1967,14 +1828,6 @@ export default function App() {
       return null;
     }
   })();
-
-  const filteredMedications = medicationQuery.trim()
-    ? imssMedicationsCatalog.filter((item) =>
-        normalizeSearchText(item.name + " " + item.code).includes(
-          normalizeSearchText(medicationQuery.trim()),
-        ),
-      )
-    : [];
 
   // PANTALLA 1: INICIO DE SESIÓN Y REGISTRO DE MÉDICO
   if (!isAuthenticated) {
