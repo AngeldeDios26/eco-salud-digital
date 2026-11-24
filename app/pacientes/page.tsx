@@ -387,28 +387,50 @@ export default function PacientesAppPage() {
 
   const generateQr = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    try {
+      window.localStorage.setItem(PATIENT_PROFILE_KEY, JSON.stringify(profile));
+    } catch {
+      // Ignorar
+    }
     if (!profile.nombre.trim() || !profile.fechaNacimiento.trim()) {
       setQrStatus(
-        "Primero completa al menos tu Nombre y Fecha de nacimiento en «Mis Datos».",
+        "Primero completa tu Nombre completo y Fecha de nacimiento en «1. Mis Datos».",
       );
       return;
     }
     if (!consent) {
-      setQrStatus("Confirma la autorización para generar tu código QR temporal.");
+      setQrStatus(
+        "Marca la casilla de autorización para generar tu código QR temporal.",
+      );
       return;
     }
     setQrBusy(true);
     setQrStatus("");
 
-    const peso = profile.pesoKg ? Number(profile.pesoKg) : null;
-    const talla = profile.tallaCm ? Number(profile.tallaCm) : null;
+    const rawPeso = profile.pesoKg ? Number(profile.pesoKg) : NaN;
+    const peso =
+      Number.isFinite(rawPeso) && rawPeso >= 0.1 && rawPeso <= 500
+        ? rawPeso
+        : null;
+
+    const rawTalla = profile.tallaCm ? Number(profile.tallaCm) : NaN;
+    const normalizedTalla =
+      Number.isFinite(rawTalla) && rawTalla > 0.3 && rawTalla <= 3
+        ? Math.round(rawTalla * 100)
+        : rawTalla;
+    const talla =
+      Number.isFinite(normalizedTalla) &&
+      normalizedTalla >= 20 &&
+      normalizedTalla <= 260
+        ? normalizedTalla
+        : null;
 
     const payload = {
       nombre: profile.nombre.trim(),
       fechaNacimiento: profile.fechaNacimiento,
       sexo: profile.sexo,
-      pesoKg: peso && Number.isFinite(peso) ? peso : null,
-      tallaCm: talla && Number.isFinite(talla) ? talla : null,
+      pesoKg: peso,
+      tallaCm: talla,
       alergias: profile.alergias.trim(),
       medicamentosActuales: profile.medicamentosActuales.trim(),
       enfermedadesCronicas: [
@@ -715,7 +737,7 @@ export default function PacientesAppPage() {
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-semibold sm:col-span-2">
-                Nombre completo
+                Nombre completo <span className="text-rose-600">*</span>
                 <input
                   type="text"
                   className={inputClass}
@@ -727,7 +749,7 @@ export default function PacientesAppPage() {
                 />
               </label>
               <label className="block text-xs font-semibold">
-                Fecha de nacimiento
+                Fecha de nacimiento <span className="text-rose-600">*</span>
                 <input
                   type="date"
                   className={inputClass}
@@ -774,12 +796,13 @@ export default function PacientesAppPage() {
                 />
               </label>
               <label className="block text-xs font-semibold">
-                Talla (cm)
+                Talla (cm) <span className="font-normal text-slate-400">(opcional)</span>
                 <input
                   type="number"
-                  step="0.1"
-                  min="20"
+                  step="0.01"
+                  min="0"
                   max="260"
+                  placeholder="Ej. 170"
                   className={inputClass}
                   value={profile.tallaCm}
                   onChange={(e) =>
@@ -790,6 +813,9 @@ export default function PacientesAppPage() {
             </div>
 
             <div className="grid gap-3 border-t border-[#EAF4F1] pt-3 sm:grid-cols-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 sm:col-span-2">
+                Antecedentes médicos (opcionales)
+              </p>
               <label className="block text-xs font-semibold">
                 Antecedentes personales patológicos
                 <textarea
@@ -1103,7 +1129,6 @@ export default function PacientesAppPage() {
                     checked={consent}
                     onChange={(e) => setConsent(e.target.checked)}
                     className="mt-0.5 h-4 w-4 accent-[#0D9488]"
-                    required
                   />
                   <span>
                     Autorizo que el médico que escanee este QR consulte mis datos durante esta consulta (código de un solo uso con vigencia de 5 minutos).
@@ -1119,9 +1144,21 @@ export default function PacientesAppPage() {
               </form>
             )}
             {qrStatus && (
-              <p className="mt-3 text-center text-xs font-semibold text-[#0F766E]" role="status">
-                {qrStatus}
-              </p>
+              <div
+                className="mt-3 rounded-xl border border-[#B9DED8] bg-[#F6FAF8] p-3 text-center text-xs font-semibold text-[#0F766E]"
+                role="status"
+              >
+                <p>{qrStatus}</p>
+                {qrStatus.includes("Mis Datos") && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("datos")}
+                    className="mt-2 rounded-lg bg-[#0F2D3D] px-3 py-1.5 text-xs font-bold text-white"
+                  >
+                    Ir a 1. Mis Datos →
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
