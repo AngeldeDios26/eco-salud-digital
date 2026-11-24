@@ -76,6 +76,16 @@ export default function Home() {
     router.push("/profesionales/consulta/hoja-clinica");
   };
 
+  const handleProvisionalEnter = () => {
+    setError("");
+    try {
+      window.localStorage.setItem("esd_auth_session", "active");
+    } catch {
+      // Ignorar
+    }
+    router.push("/profesionales/consulta/hoja-clinica");
+  };
+
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!nombre.trim() || !cedula.trim() || !email.trim() || !password.trim()) {
@@ -130,6 +140,16 @@ export default function Home() {
       setError("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
       setTab("login");
       return;
+    }
+    router.push("/profesionales/consulta/hoja-clinica");
+  };
+
+  const handleProvisionalEnter = () => {
+    setError("");
+    try {
+      window.localStorage.setItem("esd_auth_session", "active");
+    } catch {
+      // Ignorar
     }
     router.push("/profesionales/consulta/hoja-clinica");
   };
@@ -293,6 +313,16 @@ export default function Home() {
             </button>
           </form>
         )}
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleProvisionalEnter}
+            className="w-full rounded-xl border border-dashed border-[#0D9488] bg-[#F6FAF8] py-2.5 text-xs font-extrabold text-[#0F766E] transition hover:bg-[#EAF4F1]"
+          >
+            ⚡ Entrar sin registro (Provisional) →
+          </button>
+        </div>
 
         <div className="mt-5 border-t border-[#EAF4F1] pt-3 text-center text-xs text-slate-500">
           ¿Eres paciente?{" "}

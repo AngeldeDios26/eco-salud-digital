@@ -282,6 +282,16 @@ export default function PacientesAppPage() {
     }
   };
 
+  const handleProvisionalEnter = () => {
+    setAuthError("");
+    setIsAuthenticated(true);
+    try {
+      window.localStorage.setItem(PATIENT_AUTH_SESSION_KEY, "active");
+    } catch {
+      // Ignorar
+    }
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     void signOutSupabaseIfConfigured();
@@ -612,6 +622,16 @@ export default function PacientesAppPage() {
               </button>
             </form>
           )}
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleProvisionalEnter}
+              className="w-full rounded-xl border border-dashed border-[#0284C7] bg-[#F6FAF8] py-2.5 text-xs font-extrabold text-[#0284C7] transition hover:bg-[#EAF4F1]"
+            >
+              ⚡ Entrar sin registro (Provisional) →
+            </button>
+          </div>
 
           <div className="mt-4 border-t border-[#EAF4F1] pt-3 text-center text-xs text-slate-500">
             ¿Eres médico?{" "}
