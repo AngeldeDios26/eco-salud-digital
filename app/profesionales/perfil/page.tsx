@@ -12,7 +12,7 @@ import {
   type ProfessionalProfile,
 } from "../../../lib/professional-profile";
 
-const fields: { key: Exclude<keyof ProfessionalProfile, "exploracionPersonalizada" | "pacientePlantilla" | "padecimientoPlantilla">; label: string; type?: string }[] = [
+const fields: { key: Exclude<keyof ProfessionalProfile, "exploracionPersonalizada" | "pacientePlantilla" | "padecimientoPlantilla" | "ginecoPlantilla">; label: string; type?: string }[] = [
   { key: "nombre", label: "Nombre completo" },
   { key: "matricula", label: "Matrícula" },
   { key: "cedula", label: "Cédula profesional" },
@@ -52,6 +52,7 @@ export default function ProfessionalProfilePage() {
           exploracionPersonalizada: "",
           pacientePlantilla: "",
           padecimientoPlantilla: "",
+          ginecoPlantilla: "",
         };
         setProfile((current) => ({
           nombre: current.nombre || fromAuth.nombre,
@@ -61,6 +62,7 @@ export default function ProfessionalProfilePage() {
           exploracionPersonalizada: current.exploracionPersonalizada,
           pacientePlantilla: current.pacientePlantilla,
           padecimientoPlantilla: current.padecimientoPlantilla,
+          ginecoPlantilla: current.ginecoPlantilla,
         }));
         setStatus("Se cargaron los datos disponibles del perfil profesional.");
       }).catch(() => {
@@ -115,7 +117,7 @@ export default function ProfessionalProfilePage() {
           <label className="block text-sm font-semibold">
             Plantilla de ficha de paciente (opcional)
             <span className="mt-1 block text-xs font-normal text-slate-500">
-              Si la dejas vacía, se usará: &quot;Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx&quot;.
+              Si la dejas vacía, el espacio iniciará en blanco para que lo llenes en consulta o desde el QR.
             </span>
             <textarea
               className={inputClass + " resize-y"}
@@ -124,13 +126,13 @@ export default function ProfessionalProfilePage() {
               maxLength={1000}
               value={profile.pacientePlantilla}
               onChange={(event) => setProfile((current) => ({ ...current, pacientePlantilla: event.target.value }))}
-              placeholder="Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx"
+              placeholder="Ej. Paciente femenino/masculino de ___ años, NSS ___, motivo de consulta: ..."
             />
           </label>
           <label className="block text-sm font-semibold">
             Plantilla de padecimiento actual (opcional)
             <span className="mt-1 block text-xs font-normal text-slate-500">
-              Si la dejas vacía, se usará: &quot;Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado&quot;.
+              Si la dejas vacía, el espacio iniciará en blanco.
             </span>
             <textarea
               className={inputClass + " resize-y"}
@@ -139,7 +141,22 @@ export default function ProfessionalProfilePage() {
               maxLength={2000}
               value={profile.padecimientoPlantilla}
               onChange={(event) => setProfile((current) => ({ ...current, padecimientoPlantilla: event.target.value }))}
-              placeholder="Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado"
+              placeholder="Ej. Refiere inicia su padecimiento actual..."
+            />
+          </label>
+          <label className="block text-sm font-semibold">
+            Plantilla de antecedentes ginecoobstétricos (opcional)
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Si la dejas vacía, iniciará en blanco (y puede desactivarse cuando el paciente sea hombre).
+            </span>
+            <textarea
+              className={inputClass + " resize-y"}
+              name="ginecoPlantilla"
+              rows={3}
+              maxLength={2000}
+              value={profile.ginecoPlantilla}
+              onChange={(event) => setProfile((current) => ({ ...current, ginecoPlantilla: event.target.value }))}
+              placeholder="Ej. Menarca, ritmo, FUM, G__ P__ A__ C__, MPF..."
             />
           </label>
           <label className="block text-sm font-semibold">

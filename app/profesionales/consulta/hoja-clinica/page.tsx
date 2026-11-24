@@ -10,8 +10,6 @@ import {
   type RecetaDraft,
 } from "../../../../lib/imss-medications";
 import {
-  DEFAULT_PADECIMIENTO_TEMPLATE,
-  DEFAULT_PATIENT_TEMPLATE,
   readProfessionalProfile,
   saveProfessionalProfile,
 } from "../../../../lib/professional-profile";
@@ -36,6 +34,7 @@ type ProfessionalDetails = {
   exploracionPersonalizada: string;
   pacientePlantilla: string;
   padecimientoPlantilla: string;
+  ginecoPlantilla: string;
 };
 
 type PrescribedMedication = {
@@ -649,6 +648,7 @@ const defaultRegisteredDoctor: ProfessionalDetails = {
   exploracionPersonalizada: "",
   pacientePlantilla: "",
   padecimientoPlantilla: "",
+  ginecoPlantilla: "",
 };
 
 const defaultAntecedents = [
@@ -888,9 +888,13 @@ export default function App() {
     perimetroAbdominal: "",
   });
   const [antecedentsText, setAntecedentsText] = useState(defaultAntecedents);
-  const [gynecologicText, setGynecologicText] = useState(defaultGynecologic);
+  const [gynecologicText, setGynecologicText] = useState("");
+  const [ginecoDisabled, setGinecoDisabled] = useState(false);
+  const [activeSidebarSection, setActiveSidebarSection] = useState<
+    "formatos" | "calculadoras" | "vademecum" | "tablas" | null
+  >(null);
   const [activeSheetTab, setActiveSheetTab] = useState<
-    "paciente" | "exploracion" | "cie10" | "recomendaciones"
+    "paciente" | "gineco" | "exploracion" | "cie10" | "recomendaciones"
   >("paciente");
   const [diabetesBox1Override, setDiabetesBox1Override] = useState<
     string | null
@@ -912,15 +916,6 @@ export default function App() {
   );
   const [currentDateStr, setCurrentDateStr] = useState("");
   const [motivoPadecimiento, setMotivoPadecimiento] = useState("");
-  const [quickPatientFields, setQuickPatientFields] = useState({
-    nombre: "Fulanita de tal",
-    sexo: "Femenina",
-    edad: "50",
-    nss: "0000000000",
-    motivo: "xxxxxxxxxxxx",
-    padecimiento: "xxxxxxxxxxxxxxxxx",
-  });
-  const [quickFieldsTouched, setQuickFieldsTouched] = useState(false);
   const [patientNoteOverride, setPatientNoteOverride] = useState<string | null>(
     null,
   );
@@ -1061,10 +1056,15 @@ export default function App() {
             sharedProfile?.padecimientoPlantilla ||
             parsed.padecimientoPlantilla ||
             "",
+          ginecoPlantilla:
+            sharedProfile?.ginecoPlantilla || parsed.ginecoPlantilla || "",
         };
         setProfessionalDetails(mergedProfile);
         if (customExam.trim()) {
           setExploracion(customExam.trim());
+        }
+        if (mergedProfile.ginecoPlantilla.trim()) {
+          setGynecologicText(mergedProfile.ginecoPlantilla.trim());
         }
         const savedCalcs = localStorage.getItem("esd_enabled_calculators");
         if (savedCalcs) {
@@ -1122,6 +1122,7 @@ export default function App() {
           professionalDetails.exploracionPersonalizada || "",
         pacientePlantilla: professionalDetails.pacientePlantilla || "",
         padecimientoPlantilla: professionalDetails.padecimientoPlantilla || "",
+        ginecoPlantilla: professionalDetails.ginecoPlantilla || "",
       });
     } catch {
       // Ignorar errores de almacenamiento local
@@ -1292,24 +1293,20 @@ export default function App() {
     .filter(Boolean)
     .join(" | ");
 
-  const defaultPatientLine = `${quickPatientFields.nombre}, de sexo ${quickPatientFields.sexo}, de ${quickPatientFields.edad} años de edad, con número de seguridad social ${quickPatientFields.nss}, motivo de consulta: ${quickPatientFields.motivo}`;
   const patientTextForNote = patientIdentity.trim()
     ? patientIdentity.trim()
-    : !quickFieldsTouched && professionalDetails.pacientePlantilla.trim()
-      ? professionalDetails.pacientePlantilla.trim()
-      : defaultPatientLine || DEFAULT_PATIENT_TEMPLATE;
+    : professionalDetails.pacientePlantilla.trim();
 
-  const defaultPadecimientoLine = `Refiere inicia su padecimiento actual ${quickPatientFields.padecimiento} resto preguntado y negado`;
   const padecimientoTextForNote = motivoPadecimiento.trim()
     ? motivoPadecimiento.trim()
-    : !quickFieldsTouched && professionalDetails.padecimientoPlantilla.trim()
-      ? professionalDetails.padecimientoPlantilla.trim()
-      : defaultPadecimientoLine || DEFAULT_PADECIMIENTO_TEMPLATE;
+    : professionalDetails.padecimientoPlantilla.trim();
 
   const generatedPatientNote = [
-    "PACIENTE: " + patientTextForNote,
+    patientTextForNote ? "PACIENTE: " + patientTextForNote : "",
     vitalsConcatenated ? "SIGNOS VITALES: " + vitalsConcatenated : "",
-    "PADECIMIENTO ACTUAL: " + padecimientoTextForNote,
+    padecimientoTextForNote
+      ? "PADECIMIENTO ACTUAL: " + padecimientoTextForNote
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -1398,10 +1395,16 @@ export default function App() {
     " | Unidad: " +
     professionalDetails.unidad;
 
-  // 1) FORMATO DIABETES MELLITUS (2 cuadros modificables con la información de la página inicial)
+  const ginecoSectionForExport =
+    !ginecoDisabled && gynecologicText.trim()
+      ? "\nANTECEDENTES GINECOOBSTÉTRICOS:\n" + gynecologicText.trim()
+      : "";
+
+  // 1) FORMATO DIABETES MELLITUS (2 secciones modificables con la información de la página inicial)
   const diabetesBox1 = [
-    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    "=== SECCIÓN 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
     effectivePatientNote,
+    ginecoSectionForExport,
     diabetesFields.glucosaAyuno ||
     diabetesFields.hba1c ||
     diabetesFields.tfge
@@ -1417,7 +1420,7 @@ export default function App() {
     .join("\n");
 
   const diabetesBox2 = [
-    "=== CUADRO 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
+    "=== SECCIÓN 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
     "EXPLORACIÓN FÍSICA:\n" + effectiveExploracion,
     "\nRevisión integral de pies: " + diabetesFields.revisionPies,
     "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
@@ -1429,10 +1432,11 @@ export default function App() {
   const effectiveDiabetesBox1 = diabetesBox1Override ?? diabetesBox1;
   const effectiveDiabetesBox2 = diabetesBox2Override ?? diabetesBox2;
 
-  // 2) FORMATO HIPERTENSIÓN ARTERIAL (3 cuadros modificables e imprimibles con la información de la página inicial)
+  // 2) FORMATO HIPERTENSIÓN ARTERIAL (3 secciones modificables e imprimibles con la información de la página inicial)
   const htaBox1 = [
-    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    "=== SECCIÓN 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
     effectivePatientNote,
+    ginecoSectionForExport,
     htaFields.taDomiciliaria
       ? "\nPromedio TA domiciliaria: " + htaFields.taDomiciliaria
       : "",
@@ -1441,12 +1445,12 @@ export default function App() {
     .join("\n");
 
   const htaBox2 = [
-    "=== CUADRO 2: EXPLORACIÓN FÍSICA ===",
+    "=== SECCIÓN 2: EXPLORACIÓN FÍSICA ===",
     effectiveExploracion,
   ].join("\n");
 
   const htaBox3 = [
-    "=== CUADRO 3: DIAGNÓSTICOS, RECOMENDACIONES Y SEGUIMIENTO ===",
+    "=== SECCIÓN 3: DIAGNÓSTICOS, RECOMENDACIONES Y SEGUIMIENTO ===",
     "Riesgo cardiovascular: " +
       htaFields.riesgoCardiovascular +
       " | Daño a órgano blanco: " +
@@ -1461,11 +1465,12 @@ export default function App() {
   const effectiveHtaBox2 = htaBox2Override ?? htaBox2;
   const effectiveHtaBox3 = htaBox3Override ?? htaBox3;
 
-  // 3) FORMATO CONTROL PRENATAL (1 solo cuadro modificable e imprimible con toda la información concatenada)
+  // 3) FORMATO CONTROL PRENATAL (1 sola nota modificable e imprimible con toda la información concatenada)
   const prenatalSingleBox = [
     "=== NOTA INTEGRAL DE CONTROL PRENATAL ===",
     "FECHA: " + currentDateStr,
     "\n" + effectivePatientNote,
+    ginecoSectionForExport,
     "CONTROL OBSTÉTRICO: FUM: " +
       (prenatalFields.fum || "S/D") +
       " | SDG: " +
@@ -1484,18 +1489,23 @@ export default function App() {
     "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
       finalIndicationsText,
     "\n" + doctorFooterConcatenated,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const effectivePrenatalBox = prenatalBoxOverride ?? prenatalSingleBox;
 
-  // 4) FORMATO CONSULTA GENERAL (2 cuadros modificables e imprimibles como Diabetes)
+  // 4) FORMATO CONSULTA GENERAL (2 secciones modificables e imprimibles como Diabetes)
   const generalBox1 = [
-    "=== CUADRO 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
+    "=== SECCIÓN 1: PACIENTE, SIGNOS VITALES Y PADECIMIENTO ACTUAL ===",
     effectivePatientNote,
-  ].join("\n");
+    ginecoSectionForExport,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const generalBox2 = [
-    "=== CUADRO 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
+    "=== SECCIÓN 2: EXPLORACIÓN FÍSICA, DIAGNÓSTICOS Y RECOMENDACIONES ===",
     "EXPLORACIÓN FÍSICA:\n" + effectiveExploracion,
     "\nDIAGNÓSTICOS CIE-10:\n" + diagnosesConcatenated,
     "\nRECOMENDACIONES Y TRATAMIENTO NO FARMACOLÓGICO:\n" +
@@ -1764,18 +1774,10 @@ export default function App() {
       perimetroAbdominal: "",
     });
     setAntecedentsText(defaultAntecedents);
-    setGynecologicText(defaultGynecologic);
+    setGynecologicText(professionalDetails.ginecoPlantilla.trim() || "");
+    setGinecoDisabled(false);
     setMotivoPadecimiento("");
     setPatientNoteOverride(null);
-    setQuickPatientFields({
-      nombre: "Fulanita de tal",
-      sexo: "Femenina",
-      edad: "50",
-      nss: "0000000000",
-      motivo: "xxxxxxxxxxxx",
-      padecimiento: "xxxxxxxxxxxxxxxxx",
-    });
-    setQuickFieldsTouched(false);
     setParaclinicosText(defaultParaclinicos);
     setExploracion(
       professionalDetails.exploracionPersonalizada.trim() ||
@@ -1850,16 +1852,11 @@ export default function App() {
         "sin-especificar": "Sin especificar",
       };
       setPatientIdentity(
-        `${data.nombre}, de sexo ${sexLabel[data.sexo]}, de ${age} años de edad, con número de seguridad social 0000000000, motivo de consulta: ${quickPatientFields.motivo}`,
+        `${data.nombre}, sexo ${sexLabel[data.sexo]}, ${age} años de edad`,
       );
-      setQuickPatientFields((prev) => ({
-        ...prev,
-        nombre: data.nombre,
-        sexo: sexLabel[data.sexo],
-        edad: String(age),
-      }));
-      setPatientNoteOverride(null);
       setSexo(data.sexo);
+      setGinecoDisabled(data.sexo === "masculino");
+      setPatientNoteOverride(null);
       setMeasurements((current) => ({
         ...current,
         ...(data.pesoKg !== null ? { peso: String(data.pesoKg) } : {}),
@@ -1879,7 +1876,9 @@ export default function App() {
         ].join("\n"),
       );
       setGynecologicText(
-        data.antecedentesGinecoobstetricos || defaultGynecologic,
+        data.antecedentesGinecoobstetricos ||
+          professionalDetails.ginecoPlantilla.trim() ||
+          "",
       );
       setTemporaryPatientHistory(data.historialTemporal ?? []);
       setQrStatus(
@@ -2187,20 +2186,26 @@ export default function App() {
             <div
               role="tablist"
               aria-label="Secciones de la nota clínica"
-              className="grid grid-cols-2 gap-1 rounded-xl border border-[#D6E6E1] bg-white p-1 shadow-sm sm:grid-cols-4 print:hidden"
+              className="grid grid-cols-2 gap-1 rounded-xl border border-[#D6E6E1] bg-white p-1 shadow-sm sm:grid-cols-5 print:hidden"
             >
               {(
                 [
                   { id: "paciente", label: "1. Paciente y Padecimiento" },
-                  { id: "exploracion", label: "2. Exploración Física" },
+                  {
+                    id: "gineco",
+                    label: ginecoDisabled
+                      ? "2. Gineco (Inactivo)"
+                      : "2. Antec. Ginecoobstétricos",
+                  },
+                  { id: "exploracion", label: "3. Exploración Física" },
                   {
                     id: "cie10",
                     label:
                       selectedDiagnoses.length > 0
-                        ? `3. CIE-10 (${selectedDiagnoses.length})`
-                        : "3. Diagnóstico CIE-10",
+                        ? `4. CIE-10 (${selectedDiagnoses.length})`
+                        : "4. Diagnóstico CIE-10",
                   },
-                  { id: "recomendaciones", label: "4. Recomendaciones" },
+                  { id: "recomendaciones", label: "5. Recomendaciones" },
                 ] as const
               ).map((tab) => {
                 const isActive = activeSheetTab === tab.id;
@@ -2212,7 +2217,7 @@ export default function App() {
                     aria-selected={isActive}
                     onClick={() => setActiveSheetTab(tab.id)}
                     className={
-                      "rounded-lg px-2 py-1.5 text-[11px] font-extrabold transition " +
+                      "truncate rounded-lg px-2 py-1.5 text-[11px] font-extrabold transition " +
                       (isActive
                         ? "bg-[#0F2D3D] text-white shadow-sm"
                         : "bg-[#F6FAF8] text-[#0F2D3D] hover:bg-[#EAF4F1]")
@@ -2224,22 +2229,22 @@ export default function App() {
               })}
             </div>
 
-            {/* PESTAÑA 1: Información del paciente + Signos vitales manuales/app + Padecimiento actual */}
+            {/* PESTAÑA 1: Información del paciente + Padecimiento actual */}
             {activeSheetTab === "paciente" && (
               <section id="datos-paciente" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
-                    01 · Paciente, Signos Vitales y Padecimiento Actual
+                    01 · Paciente y Padecimiento Actual
                   </h2>
                   <div className="flex flex-wrap gap-1.5 print:hidden">
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectivePatientNote, "Cuadro 1")
+                        copyTextHelper(effectivePatientNote, "Paciente y Padecimiento")
                       }
                       className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2 py-1 text-[11px] font-bold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1]"
                     >
-                      📋 Copiar cuadro
+                      📋 Copiar texto
                     </button>
                     {patientNoteOverride !== null && (
                       <button
@@ -2247,7 +2252,7 @@ export default function App() {
                         onClick={() => setPatientNoteOverride(null)}
                         className="rounded-lg border border-[#0D9488] bg-white px-2 py-1 text-[11px] font-bold text-[#0F766E] hover:bg-[#EAF4F1]"
                       >
-                        ↻ Sincronizar QR/app
+                        ↻ Sincronizar perfil/QR
                       </button>
                     )}
                   </div>
@@ -2288,48 +2293,62 @@ export default function App() {
                   </details>
                 )}
 
-                <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-xl border border-amber-300 bg-amber-50/70 p-2 sm:grid-cols-3 lg:grid-cols-6 print:hidden">
-                  {(
-                    [
-                      { key: "nombre", label: "Nombre" },
-                      { key: "sexo", label: "Sexo" },
-                      { key: "edad", label: "Edad" },
-                      { key: "nss", label: "NSS" },
-                      { key: "motivo", label: "Motivo" },
-                      { key: "padecimiento", label: "Padecimiento" },
-                    ] as const
-                  ).map((item) => (
-                    <label
-                      key={item.key}
-                      className="block text-[10px] font-extrabold uppercase tracking-wide text-amber-900"
-                    >
-                      {item.label}
-                      <input
-                        type="text"
-                        value={quickPatientFields[item.key]}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setQuickFieldsTouched(true);
-                          setPatientNoteOverride(null);
-                          setQuickPatientFields((prev) => ({
-                            ...prev,
-                            [item.key]: val,
-                          }));
-                        }}
-                        className="mt-0.5 w-full rounded-md border border-amber-400 bg-amber-100 px-2 py-1 text-[11px] font-bold text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:bg-white"
-                      />
-                    </label>
-                  ))}
-                </div>
-
                 <textarea
                   id="cuadro-paciente-padecimiento"
                   name="cuadroPacientePadecimiento"
-                  rows={7}
+                  rows={9}
                   value={effectivePatientNote}
                   onChange={(event) => handlePatientNoteChange(event.target.value)}
-                  placeholder="PACIENTE: Fulanita de tal, de sexo Femenina, de 50 años de edad, con número de seguridad social 0000000000, motivo de consulta: xxxxxxxxxxxx&#10;&#10;PADECIMIENTO ACTUAL: Refiere inicia su padecimiento actual xxxxxxxxxxxxxxxxx resto preguntado y negado"
+                  placeholder="Escribe aquí los datos del paciente y su padecimiento actual (o configúralos como plantilla en Perfil / conéctate por QR)..."
                   className={inputClassName + " resize-y font-sans text-xs"}
+                />
+              </section>
+            )}
+
+            {/* PESTAÑA 2: Antecedentes Ginecoobstétricos */}
+            {activeSheetTab === "gineco" && (
+              <section id="antecedentes-gineco" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                    02 · Antecedentes Ginecoobstétricos
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 print:hidden">
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2.5 py-1 text-[11px] font-bold text-[#0F2D3D]">
+                      <input
+                        type="checkbox"
+                        checked={ginecoDisabled}
+                        onChange={(e) => setGinecoDisabled(e.target.checked)}
+                      />
+                      Desactivar (paciente masculino)
+                    </label>
+                    <button
+                      type="button"
+                      disabled={ginecoDisabled}
+                      onClick={() =>
+                        copyTextHelper(gynecologicText, "Antecedentes Ginecoobstétricos")
+                      }
+                      className="rounded-lg border border-[#D6E6E1] bg-[#F8FBFA] px-2 py-1 text-[11px] font-bold text-[#0F2D3D] hover:border-[#0D9488] hover:bg-[#EAF4F1] disabled:opacity-50"
+                    >
+                      📋 Copiar texto
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  id="antecedentes-gineco-unificados"
+                  name="antecedentesGinecoobstetricos"
+                  rows={9}
+                  disabled={ginecoDisabled}
+                  value={ginecoDisabled ? "" : gynecologicText}
+                  onChange={(event) => setGynecologicText(event.target.value)}
+                  placeholder={
+                    ginecoDisabled
+                      ? "Desactivado para paciente masculino."
+                      : "Escribe aquí los antecedentes ginecoobstétricos (o configúralos en Perfil / conéctate por QR)..."
+                  }
+                  className={
+                    inputClassName +
+                    " resize-y text-xs disabled:bg-slate-100 disabled:text-slate-400"
+                  }
                 />
               </section>
             )}
@@ -2339,7 +2358,7 @@ export default function App() {
               <section id="exploracion-fisica" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
-                    02 · Exploración Física
+                    03 · Exploración Física
                   </h2>
                   <div className="flex flex-wrap gap-1.5 print:hidden">
                     <button
@@ -2381,7 +2400,7 @@ export default function App() {
             {activeSheetTab === "cie10" && (
               <section id="diagnosticos" className={sectionClassName}>
                 <SectionHeading
-                  number="03"
+                  number="04"
                   variant="navy"
                   note="Busca por clave o padecimiento en el catálogo CIE-10 o agrégalo manualmente."
                 >
@@ -2544,7 +2563,7 @@ export default function App() {
               <section id="indicaciones" className="rounded-xl border border-[#D6E6E1] bg-white p-3 shadow-sm">
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
-                    04 · Recomendaciones y Tratamiento No Farmacológico
+                    05 · Recomendaciones y Tratamiento No Farmacológico
                   </h2>
                   <div className="flex flex-wrap gap-1.5 print:hidden">
                     <button
@@ -2710,7 +2729,16 @@ export default function App() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+              <div
+                onClick={() => setActiveSidebarSection("formatos")}
+                onFocus={() => setActiveSidebarSection("formatos")}
+                className={
+                  "rounded-2xl border-2 p-3.5 transition " +
+                  (activeSidebarSection === "formatos"
+                    ? "border-[#0D9488] bg-white shadow-sm ring-2 ring-[#0D9488]/15"
+                    : "border-[#D6E6E1] bg-[#F8FBFA]")
+                }
+              >
                 <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
                   Formatos de Exportación e Impresión
                 </p>
@@ -2764,7 +2792,16 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#0D9488] bg-[#F6FAF8] p-3.5">
+              <div
+                onClick={() => setActiveSidebarSection("calculadoras")}
+                onFocus={() => setActiveSidebarSection("calculadoras")}
+                className={
+                  "rounded-2xl border-2 p-3.5 transition " +
+                  (activeSidebarSection === "calculadoras"
+                    ? "border-[#0D9488] bg-white shadow-sm ring-2 ring-[#0D9488]/15"
+                    : "border-[#D6E6E1] bg-[#F8FBFA]")
+                }
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold uppercase tracking-wide text-[#0F766E]">
                     Calculadora clínica rápida
@@ -2897,7 +2934,16 @@ export default function App() {
               </div>
 
               {/* 3) VADEMÉCUM DEL CUADRO BÁSICO DE MEDICAMENTOS */}
-              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+              <div
+                onClick={() => setActiveSidebarSection("vademecum")}
+                onFocus={() => setActiveSidebarSection("vademecum")}
+                className={
+                  "rounded-2xl border-2 p-3.5 transition " +
+                  (activeSidebarSection === "vademecum"
+                    ? "border-[#0D9488] bg-white shadow-sm ring-2 ring-[#0D9488]/15"
+                    : "border-[#D6E6E1] bg-[#F8FBFA]")
+                }
+              >
                 <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
                   Vademécum Cuadro Básico IMSS
                 </p>
@@ -2993,7 +3039,16 @@ export default function App() {
               </div>
 
               {/* 4) FORMATOS Y TABLAS: SOLO LINKS PARA ABRIR E IMPRIMIR EN OTRA PESTAÑA (PERSONALIZABLES) */}
-              <div className="rounded-2xl border border-[#D6E6E1] bg-[#F8FBFA] p-3.5">
+              <div
+                onClick={() => setActiveSidebarSection("tablas")}
+                onFocus={() => setActiveSidebarSection("tablas")}
+                className={
+                  "rounded-2xl border-2 p-3.5 transition " +
+                  (activeSidebarSection === "tablas"
+                    ? "border-[#0D9488] bg-white shadow-sm ring-2 ring-[#0D9488]/15"
+                    : "border-[#D6E6E1] bg-[#F8FBFA]")
+                }
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-extrabold uppercase tracking-wide text-[#0F2D3D]">
                     Formatos y Tablas (Imprimir)
@@ -3312,14 +3367,14 @@ export default function App() {
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: FORMATO HIPERTENSIÓN (3 CUADROS MODIFICABLES E IMPRIMIBLES) */}
+      {/* VENTANA EMERGENTE: FORMATO HIPERTENSIÓN (3 SECCIONES MODIFICABLES E IMPRIMIBLES) */}
       {activeWindow === "hipertension" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
                 <h2 className="text-lg font-extrabold text-[#0F2D3D]">
-                  FORMATO HIPERTENSIÓN ARTERIAL · 3 CUADROS MODIFICABLES
+                  FORMATO HIPERTENSIÓN ARTERIAL · 3 SECCIONES MODIFICABLES
                 </h2>
                 <p className="text-xs text-slate-500">
                   Información de la página inicial en 3 bloques editables e imprimibles para el SIMF
@@ -3357,16 +3412,16 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro 1: Paciente, Signos Vitales y Padecimiento Actual",
+                            "Sección 1: Paciente, Signos Vitales y Padecimiento Actual",
                           content: effectiveHtaBox1,
                         },
                         {
-                          heading: "Cuadro 2: Exploración Física",
+                          heading: "Sección 2: Exploración Física",
                           content: effectiveHtaBox2,
                         },
                         {
                           heading:
-                            "Cuadro 3: Diagnósticos CIE-10 y Recomendaciones",
+                            "Sección 3: Diagnósticos CIE-10 y Recomendaciones",
                           content: effectiveHtaBox3,
                         },
                       ],
@@ -3396,7 +3451,7 @@ export default function App() {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                    Cuadro 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
+                    Sección 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
                   </label>
                   <div className="flex gap-1.5 print:hidden">
                     {htaBox1Override !== null && (
@@ -3411,11 +3466,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectiveHtaBox1, "Cuadro 1 de Hipertensión")
+                        copyTextHelper(effectiveHtaBox1, "Sección 1 de Hipertensión")
                       }
                       className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
                     >
-                      Copiar Cuadro 1
+                      Copiar Sección 1
                     </button>
                   </div>
                 </div>
@@ -3430,7 +3485,7 @@ export default function App() {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                    Cuadro 2 (Modificable): Exploración física
+                    Sección 2 (Modificable): Exploración física
                   </label>
                   <div className="flex gap-1.5 print:hidden">
                     {htaBox2Override !== null && (
@@ -3445,11 +3500,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectiveHtaBox2, "Cuadro 2 de Hipertensión")
+                        copyTextHelper(effectiveHtaBox2, "Sección 2 de Hipertensión")
                       }
                       className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
                     >
-                      Copiar Cuadro 2
+                      Copiar Sección 2
                     </button>
                   </div>
                 </div>
@@ -3464,7 +3519,7 @@ export default function App() {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                    Cuadro 3 (Modificable): Diagnósticos, Recomendaciones y Seguimiento
+                    Sección 3 (Modificable): Diagnósticos, Recomendaciones y Seguimiento
                   </label>
                   <div className="flex gap-1.5 print:hidden">
                     {htaBox3Override !== null && (
@@ -3479,11 +3534,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectiveHtaBox3, "Cuadro 3 de Hipertensión")
+                        copyTextHelper(effectiveHtaBox3, "Sección 3 de Hipertensión")
                       }
                       className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
                     >
-                      Copiar Cuadro 3
+                      Copiar Sección 3
                     </button>
                   </div>
                 </div>
@@ -3499,17 +3554,17 @@ export default function App() {
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: CONTROL PRENATAL (1 CUADRO MODIFICABLE E IMPRIMIBLE) */}
+      {/* VENTANA EMERGENTE: CONTROL PRENATAL (NOTA ÚNICA MODIFICABLE E IMPRIMIBLE) */}
       {activeWindow === "prenatal" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
                 <h2 className="text-lg font-extrabold text-[#0F2D3D]">
-                  HOJA DE CONTROL PRENATAL · CUADRO ÚNICO MODIFICABLE
+                  HOJA DE CONTROL PRENATAL · NOTA ÚNICA MODIFICABLE
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Toda la información concatenada en un solo cuadro editable e imprimible
+                  Toda la información concatenada en una sola nota editable e imprimible
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -3540,7 +3595,7 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro Único: Nota Integral de Control Prenatal",
+                            "Nota Única: Nota Integral de Control Prenatal",
                           content: effectivePrenatalBox,
                         },
                       ],
@@ -3569,7 +3624,7 @@ export default function App() {
             <div className="mt-4">
               <div className="mb-1.5 flex items-center justify-between">
                 <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                  Cuadro Único (Modificable): Nota de Control Prenatal Completa
+                  Nota Única (Modificable): Nota de Control Prenatal Completa
                 </label>
                 <div className="flex gap-1.5 print:hidden">
                   {prenatalBoxOverride !== null && (
@@ -3603,17 +3658,17 @@ export default function App() {
         </div>
       )}
 
-      {/* VENTANA EMERGENTE: CONSULTA GENERAL (2 CUADROS MODIFICABLES E IMPRIMIBLES COMO DIABETES) */}
+      {/* VENTANA EMERGENTE: CONSULTA GENERAL (2 SECCIONES MODIFICABLES E IMPRIMIBLES COMO DIABETES) */}
       {activeWindow === "general" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#0F2D3D] bg-white p-4 shadow-2xl sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6E6E1] pb-3 print:hidden">
               <div>
                 <h2 className="text-lg font-extrabold text-[#0F2D3D]">
-                  FORMATO CONSULTA GENERAL · 2 CUADROS MODIFICABLES
+                  FORMATO CONSULTA GENERAL · 2 VERSIONES MODIFICABLES
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Información de la página inicial en 2 cuadros editables e imprimibles para el SIMF
+                  Información de la página inicial en 2 bloques editables e imprimibles para el SIMF
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -3644,12 +3699,12 @@ export default function App() {
                       [
                         {
                           heading:
-                            "Cuadro 1: Paciente, Signos Vitales y Padecimiento Actual",
+                            "Sección 1: Paciente, Signos Vitales y Padecimiento Actual",
                           content: effectiveGeneralBox1,
                         },
                         {
                           heading:
-                            "Cuadro 2: Exploración Física, Diagnósticos CIE-10 y Recomendaciones",
+                            "Sección 2: Exploración Física, Diagnósticos CIE-10 y Recomendaciones",
                           content: effectiveGeneralBox2,
                         },
                       ],
@@ -3679,7 +3734,7 @@ export default function App() {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                    Cuadro 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
+                    Sección 1 (Modificable): Paciente, Signos vitales y Padecimiento actual
                   </label>
                   <div className="flex gap-1.5 print:hidden">
                     {generalBox1Override !== null && (
@@ -3694,11 +3749,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectiveGeneralBox1, "Cuadro 1 Consulta General")
+                        copyTextHelper(effectiveGeneralBox1, "Sección 1 Consulta General")
                       }
                       className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
                     >
-                      Copiar Cuadro 1
+                      Copiar Sección 1
                     </button>
                   </div>
                 </div>
@@ -3713,7 +3768,7 @@ export default function App() {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-xs font-extrabold uppercase text-[#0F2D3D]">
-                    Cuadro 2 (Modificable): Exploración física, Diagnósticos y Recomendaciones
+                    Sección 2 (Modificable): Exploración física, Diagnósticos y Recomendaciones
                   </label>
                   <div className="flex gap-1.5 print:hidden">
                     {generalBox2Override !== null && (
@@ -3728,11 +3783,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() =>
-                        copyTextHelper(effectiveGeneralBox2, "Cuadro 2 Consulta General")
+                        copyTextHelper(effectiveGeneralBox2, "Sección 2 Consulta General")
                       }
                       className="rounded-lg bg-[#EAF4F1] px-2.5 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
                     >
-                      Copiar Cuadro 2
+                      Copiar Sección 2
                     </button>
                   </div>
                 </div>
@@ -3951,7 +4006,7 @@ export default function App() {
                       pacientePlantilla: nextVal,
                     }));
                   }}
-                  placeholder={DEFAULT_PATIENT_TEMPLATE}
+                  placeholder="Si la dejas vacía, iniciará en blanco en la nota."
                   className={inputClassName + " resize-y"}
                 />
               </label>
@@ -3968,7 +4023,24 @@ export default function App() {
                       padecimientoPlantilla: nextVal,
                     }));
                   }}
-                  placeholder={DEFAULT_PADECIMIENTO_TEMPLATE}
+                  placeholder="Si la dejas vacía, iniciará en blanco en la nota."
+                  className={inputClassName + " resize-y"}
+                />
+              </label>
+              <label className="block text-xs font-semibold text-[#0F2D3D]">
+                Plantilla de antecedentes ginecoobstétricos (opcional)
+                <textarea
+                  name="ginecoPlantilla"
+                  rows={2}
+                  value={professionalDetails.ginecoPlantilla}
+                  onChange={(event) => {
+                    const nextVal = event.target.value;
+                    setProfessionalDetails((prev) => ({
+                      ...prev,
+                      ginecoPlantilla: nextVal,
+                    }));
+                  }}
+                  placeholder="Si la dejas vacía, iniciará en blanco en la pestaña de Gineco."
                   className={inputClassName + " resize-y"}
                 />
               </label>
@@ -4022,6 +4094,9 @@ export default function App() {
                     professionalDetails.exploracionPersonalizada.trim() ||
                       defaultPhysicalExamText,
                   );
+                }
+                if (!gynecologicText.trim() && professionalDetails.ginecoPlantilla.trim()) {
+                  setGynecologicText(professionalDetails.ginecoPlantilla.trim());
                 }
                 setActiveWindow(null);
               }}
