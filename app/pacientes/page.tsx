@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
-import { BrandLogo } from "../../components/BrandLogo";
+import { PatientBrandLogo } from "../../components/BrandLogo";
 
 export type LocalPatientHistoryEntry = {
   id: string;
@@ -372,10 +372,11 @@ export default function PacientesAppPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8 text-[#0F2D3D]">
         <div className="w-full max-w-md rounded-2xl border border-[#D6E6E1] bg-white/95 p-6 shadow-xl backdrop-blur">
           <div className="flex items-center gap-3 border-b border-[#EAF4F1] pb-4">
-            <BrandLogo size="lg" />
+            <PatientBrandLogo size="lg" />
             <div>
               <h1 className="text-lg font-extrabold text-[#0F2D3D]">
-                ECO <span className="text-[#0D9488]">SALUD · PACIENTES</span>
+                ECO SALUD DIGITAL{" "}
+                <span className="text-[#0284C7]">PACIENTES</span>
               </h1>
               <p className="text-xs text-slate-500">
                 App gratuita · Tu historial médico en tu celular
@@ -510,10 +511,11 @@ export default function PacientesAppPage() {
       <header className="sticky top-0 z-20 border-b border-[#D6E6E1] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur sm:px-5">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
-            <BrandLogo size="sm" />
+            <PatientBrandLogo size="sm" />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-extrabold sm:text-base">
-                ECO <span className="text-[#0D9488]">SALUD · PACIENTES</span>
+                ECO SALUD DIGITAL{" "}
+                <span className="text-[#0284C7]">PACIENTES</span>
               </h1>
               <p className="truncate text-[11px] text-slate-500">
                 {profile.nombre || authName || "Mi Expediente Portátil"} · Gratis
