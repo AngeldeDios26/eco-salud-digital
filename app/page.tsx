@@ -144,16 +144,6 @@ export default function Home() {
     router.push("/profesionales/consulta/hoja-clinica");
   };
 
-  const handleProvisionalEnter = () => {
-    setError("");
-    try {
-      window.localStorage.setItem("esd_auth_session", "active");
-    } catch {
-      // Ignorar
-    }
-    router.push("/profesionales/consulta/hoja-clinica");
-  };
-
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-8 text-[#0F2D3D]">
       <div className="w-full max-w-md rounded-2xl border border-[#D6E6E1] bg-white/95 p-6 shadow-xl backdrop-blur sm:p-7">
