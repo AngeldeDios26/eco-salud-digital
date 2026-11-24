@@ -96,11 +96,6 @@ type DoctorProfileFieldConfig = {
   name: string;
 };
 
-type ClinicalFormatOption = {
-  key: ClinicalFormat;
-  label: string;
-};
-
 type ActiveModalWindow =
   | null
   | "diabetes"
@@ -850,7 +845,6 @@ export default function App() {
 
   const [clinicalFormat, setClinicalFormat] =
     useState<ClinicalFormat>("general");
-  const [sexo, setSexo] = useState("");
   const [patientIdentity, setPatientIdentity] = useState("");
   const [measurements, setMeasurements] = useState<Record<string, string>>({
     presionSistolica: "",
@@ -864,7 +858,6 @@ export default function App() {
     glucosaCapilar: "",
     perimetroAbdominal: "",
   });
-  const [antecedentsText, setAntecedentsText] = useState(defaultAntecedents);
   const [gynecologicText, setGynecologicText] = useState("");
   const [ginecoDisabled, setGinecoDisabled] = useState(false);
   const [activeSidebarSection, setActiveSidebarSection] = useState<
@@ -918,7 +911,7 @@ export default function App() {
     adherencia:
       "Buena adherencia farmacológica, sin efectos adversos reportados.",
   });
-  const [prenatalFields, setPrenatalFields] = useState({
+  const [prenatalFields] = useState({
     fum: "",
     sdg: "",
     fpp: "",
@@ -939,18 +932,6 @@ export default function App() {
   const [manualDiagnosisDescription, setManualDiagnosisDescription] =
     useState("");
 
-  const [medicationQuery, setMedicationQuery] = useState("");
-  const [selectedMedication, setSelectedMedication] = useState("");
-  const [selectedMedicationCode, setSelectedMedicationCode] = useState("");
-  const [medicationFields, setMedicationFields] = useState({
-    presentacion: "",
-    dosis: "",
-    via: "",
-    frecuencia: "",
-    duracion: "",
-    cantidad: "",
-    repeticiones: "",
-  });
   const [prescribedMedications, setPrescribedMedications] = useState<
     PrescribedMedication[]
   >([]);
@@ -1621,7 +1602,6 @@ export default function App() {
     setFinalized(false);
     setCorrectionMode(false);
     setPatientIdentity("");
-    setSexo("");
     setMeasurements({
       presionSistolica: "",
       presionDiastolica: "",
@@ -1634,7 +1614,6 @@ export default function App() {
       glucosaCapilar: "",
       perimetroAbdominal: "",
     });
-    setAntecedentsText(defaultAntecedents);
     setGynecologicText(professionalDetails.ginecoPlantilla.trim() || "");
     setGinecoDisabled(false);
     setMotivoPadecimiento("");
@@ -1715,7 +1694,6 @@ export default function App() {
       setPatientIdentity(
         `${data.nombre}, sexo ${sexLabel[data.sexo]}, ${age} años de edad`,
       );
-      setSexo(data.sexo);
       setGinecoDisabled(data.sexo === "masculino");
       setPatientNoteOverride(null);
       setMeasurements((current) => ({
@@ -1723,19 +1701,6 @@ export default function App() {
         ...(data.pesoKg !== null ? { peso: String(data.pesoKg) } : {}),
         ...(data.tallaCm !== null ? { talla: String(data.tallaCm) } : {}),
       }));
-      const defaultValue = "Interrogados y negados";
-      setAntecedentsText(
-        [
-          "Antecedentes heredofamiliares: " + defaultValue,
-          "Antecedentes personales patológicos: " +
-            (data.enfermedadesCronicas || defaultValue),
-          "Antecedentes personales no patológicos: " + defaultValue,
-          "Alergias: " + (data.alergias || defaultValue),
-          "Medicamentos actuales: " + (data.medicamentosActuales || defaultValue),
-          "Antecedentes quirúrgicos: " + (data.cirugias || defaultValue),
-          "Toxicomanías: " + defaultValue,
-        ].join("\n"),
-      );
       setGynecologicText(
         data.antecedentesGinecoobstetricos ||
           professionalDetails.ginecoPlantilla.trim() ||

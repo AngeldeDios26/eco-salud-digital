@@ -1,8 +1,8 @@
 # Eco Salud Digital
 
-Prototipo web de herramientas clínicas para profesionales de la salud y un portal de pacientes para compartir información mediante un código QR temporal.
+Plataforma web y móvil de **Consulta Ágil** para médicos de primer contacto (Medicina Familiar y General) y aplicación independiente para pacientes (**Eco Salud Digital Pacientes**) con enlace mediante código QR temporal.
 
-> **Demostración:** no utilizar con pacientes reales. No es un producto oficial del IMSS ni de la Secretaría de Salud.
+> **Demostración:** no utilizar con pacientes reales hasta habilitar el entorno productivo cifrado y cumplimiento normativo correspondiente. No es un producto oficial del IMSS ni de la Secretaría de Salud.
 
 ## Iniciar en local
 
@@ -15,7 +15,7 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-Para revisar el código antes de publicar cambios:
+Para verificar el código antes de publicar cambios:
 
 ```powershell
 npm run lint
@@ -23,46 +23,32 @@ npx tsc --noEmit --incremental false
 npm run build
 ```
 
-## Secciones
+## Módulos y rutas principales
 
-- **Inicio**: accesos a consulta, herramientas, receta, perfil y biblioteca.
-- **Hoja de consulta** (`/profesionales/consulta/hoja-clinica`): captura editable, diagnóstico CIE-10, exploración, signos vitales, indicaciones y preparación de receta en la sesión actual.
-- **Herramientas** (`/profesionales`): calculadoras clínicas, consulta de grupos terapéuticos IMSS y recursos de paraclínicos y escalas.
-- **Mi Biblioteca** (`/profesionales/biblioteca`): guías, fuentes externas, libros y accesos a plataformas.
-- **Mi perfil** (`/profesionales/perfil`): datos profesionales guardados localmente en el navegador para completar futuras hojas clínicas.
-- **Portal de pacientes** (`/pacientes`): formulario para generar un QR temporal con los datos elegidos por el paciente.
+| Sección | Ruta | Descripción |
+| --- | --- | --- |
+| Acceso Profesionales | `/` | Inicio de sesión y registro médico previo a la consulta |
+| Hoja de Consulta | `/profesionales/consulta/hoja-clinica` | Vista compacta de media pantalla con 5 pestañas, barra lateral derecha, Vademécum IMSS y descarga en PDF |
+| Receta Médica | `/profesionales/consulta/receta` | Receta genérica con buscador exclusivo del Cuadro Básico IMSS |
+| Mi Perfil | `/profesionales/perfil` | Datos médicos y plantillas personalizadas (paciente, padecimiento, gineco, exploración física) |
+| Herramientas y Biblioteca | `/profesionales` y `/profesionales/biblioteca` | Calculadoras clínicas, grupos terapéuticos y guías oficiales |
+| App de Pacientes | `/pacientes` | Registro/acceso de paciente, antecedentes (gineco si es mujer), historial en celular, QR y espacio publicitario |
+| Aviso y Términos | `/aviso-de-privacidad` y `/terminos` | Aviso de Privacidad (LFPDPPP) y Descargo de Responsabilidad Médica |
 
-## QR temporal del paciente
+## QR temporal distribuido (`ESD1`) con Supabase
 
-La persona elige qué información compartir y debe marcar una autorización explícita antes de generar el código. El QR contiene un token aleatorio, vence a los cinco minutos, puede consumirse una sola vez y puede cancelarse mientras siga vigente. Al leerse, la hoja clínica muestra los datos importados para que el médico los revise y edite.
+1. Ejecuta la migración [001_temporary_transfers.sql](supabase/migrations/001_temporary_transfers.sql) en tu proyecto de Supabase.
+2. Configura en `.env.local` o en Vercel las variables de [.env.example](.env.example):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 
-La implementación actual conserva las transferencias temporalmente en memoria del proceso. Un reinicio las invalida y varias instancias de servidor no comparten el mismo almacén; por eso este flujo sigue siendo solo para demostración.
+Si estas variables no están definidas, la aplicación usa automáticamente un almacén temporal en memoria para pruebas locales.
 
-## Límites actuales
+## Publicación en Google Play Store y App Store (Capacitor)
 
-- No se crean expedientes médicos permanentes ni se integra SIMF.
-- El perfil profesional se conserva en el almacenamiento local del navegador; la integración opcional con Supabase requiere autenticación configurada.
-- El buscador farmacológico de la hoja tiene una ficha IMSS integrada como ejemplo. Falta estructurar el catálogo institucional completo.
-- Favoritos y recursos recientes se guardan localmente en el navegador.
-- No ingresar datos reales de pacientes en este prototipo.
+El archivo [capacitor.config.ts](capacitor.config.ts) y [manifest.ts](app/manifest.ts) dejan lista la configuración base para envolver la aplicación web en Android/iOS:
 
-## Variables opcionales
-
-El perfil puede leer una sesión profesional de Supabase si se configuran estas variables en el entorno local o del servicio de despliegue:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-
-No se necesitan para iniciar la demostración local. Los archivos `.env*` permanecen fuera del repositorio.
-
-## Rutas principales
-
-| Página | Ruta |
-| --- | --- |
-| Inicio | `/` |
-| Herramientas | `/profesionales` |
-| Hoja de consulta | `/profesionales/consulta/hoja-clinica` |
-| Biblioteca | `/profesionales/biblioteca` |
-| Perfil | `/profesionales/perfil` |
-| Portal de pacientes | `/pacientes` |
-| Generar QR | `/pacientes/qr` |
+1. Instalar Capacitor (`@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, `@capacitor/ios`).
+2. Declarar permiso de cámara (`CAMERA` en `AndroidManifest.xml` y `NSCameraUsageDescription` en `Info.plist`) para el lector QR.
+3. Publicar las URLs legales (`/aviso-de-privacidad` y `/terminos`) en las fichas de Google Play Console y App Store Connect.
