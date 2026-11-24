@@ -253,6 +253,15 @@ export default function Home() {
           <Link href="/pacientes" className="font-bold text-[#0D9488] hover:underline">
             Ir a la App de Pacientes →
           </Link>
+          <div className="mt-2 flex justify-center gap-3 text-[11px]">
+            <Link href="/aviso-de-privacidad" className="hover:underline">
+              Aviso de Privacidad
+            </Link>
+            <span>·</span>
+            <Link href="/terminos" className="hover:underline">
+              Términos y Descargo Médico
+            </Link>
+          </div>
         </div>
       </div>
     </main>

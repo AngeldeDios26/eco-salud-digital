@@ -257,6 +257,29 @@ export default function PacientesAppPage() {
     }
   };
 
+  const exportHistoryBackup = () => {
+    const content = [
+      "RESPALDO DE HISTORIAL MÉDICO - ECO SALUD DIGITAL PACIENTES",
+      `Paciente: ${profile.nombre || authName || "No especificado"}`,
+      `Fecha de respaldo: ${new Date().toLocaleDateString("es-MX")}`,
+      "",
+      ...history.map(
+        (h, i) =>
+          `${i + 1}. ${h.fecha} | ${h.diagnostico}\n   Tratamiento: ${h.tratamiento}\n   Atendido por: ${h.atendidoPor}`,
+      ),
+    ].join("\n\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "respaldo-historial-medico.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setHistoryStatus("Respaldo descargado en tu dispositivo.");
+  };
+
   const generateQr = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!profile.nombre.trim() || !profile.fechaNacimiento.trim()) {
@@ -846,9 +869,20 @@ export default function PacientesAppPage() {
             </form>
 
             <div className="rounded-2xl border border-[#D6E6E1] bg-white p-4 shadow-sm sm:p-5">
-              <h3 className="text-sm font-extrabold uppercase tracking-wide text-[#0F2D3D]">
-                Mi Historial Médico ({history.length})
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-[#0F2D3D]">
+                  Mi Historial Médico ({history.length})
+                </h3>
+                {history.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={exportHistoryBackup}
+                    className="rounded-lg border border-[#0D9488] bg-[#EAF4F1] px-3 py-1 text-xs font-bold text-[#0F2D3D] hover:bg-[#0D9488] hover:text-white"
+                  >
+                    ⬇ Respaldar historial
+                  </button>
+                )}
+              </div>
               {history.length === 0 ? (
                 <p className="mt-3 rounded-xl border border-dashed border-[#D6E6E1] bg-[#F6FAF8] p-4 text-xs text-slate-500">
                   Aún no hay consultas registradas en este dispositivo.
@@ -995,6 +1029,15 @@ export default function PacientesAppPage() {
           <span className="text-[11px] font-bold text-[#0284C7]">
             Banner 320×50 / 728×90
           </span>
+        </div>
+        <div className="mt-2 flex justify-center gap-3 text-[11px] text-slate-500">
+          <Link href="/aviso-de-privacidad" className="hover:underline">
+            Aviso de Privacidad
+          </Link>
+          <span>·</span>
+          <Link href="/terminos" className="hover:underline">
+            Términos y Descargo Médico
+          </Link>
         </div>
       </aside>
     </main>
