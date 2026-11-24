@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const payload = validatePatientQrData(submission.data);
   if (!payload) return Response.json({ error: "Revisa los datos requeridos y sus formatos." }, { status: 400, headers: { "Cache-Control": "no-store" } });
 
-  const transfer = createTemporaryTransfer(payload);
+  const transfer = await createTemporaryTransfer(payload);
   if (!transfer) return Response.json({ error: "Hay muchas transferencias activas. Intenta de nuevo en unos minutos." }, { status: 503, headers: { "Cache-Control": "no-store" } });
 
   return Response.json(transfer, { headers: { "Cache-Control": "no-store, private" } });

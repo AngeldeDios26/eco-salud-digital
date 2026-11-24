@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "El código temporal no es válido." }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
-  const data = consumeTemporaryTransfer((body as { code: string }).code);
+  const data = await consumeTemporaryTransfer((body as { code: string }).code);
   if (!data) return Response.json({ error: "El QR ya venció, ya fue utilizado o no es válido. Genera uno nuevo." }, { status: 410, headers: { "Cache-Control": "no-store" } });
   return Response.json({ data }, { headers: { "Cache-Control": "no-store, private" } });
 }
