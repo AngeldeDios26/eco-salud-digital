@@ -16,6 +16,8 @@ export type PatientQrData = {
   alergias: string;
   medicamentosActuales: string;
   enfermedadesCronicas: string;
+  antecedentesNoPatologicos?: string;
+  toxicomanias?: string;
   cirugias: string;
   antecedentesGinecoobstetricos: string;
   historialTemporal?: PatientHistoryEntry[];
@@ -115,6 +117,8 @@ export function validatePatientQrData(value: unknown): PatientQrData | null {
   const alergias = text("alergias", 2000);
   const medicamentosActuales = text("medicamentosActuales", 2000);
   const enfermedadesCronicas = text("enfermedadesCronicas", 3000);
+  const antecedentesNoPatologicos = text("antecedentesNoPatologicos", 2000) ?? "";
+  const toxicomanias = text("toxicomanias", 1000) ?? "";
   const cirugias = text("cirugias", 2000);
   const antecedentesGinecoobstetricos = text("antecedentesGinecoobstetricos", 2000);
   if ([alergias, medicamentosActuales, enfermedadesCronicas, cirugias, antecedentesGinecoobstetricos].some((field) => field === null)) return null;
@@ -133,5 +137,5 @@ export function validatePatientQrData(value: unknown): PatientQrData | null {
       .filter((item) => item.fecha || item.diagnostico || item.tratamiento);
   }
 
-  return { nombre, fechaNacimiento, sexo, pesoKg, tallaCm, alergias: alergias!, medicamentosActuales: medicamentosActuales!, enfermedadesCronicas: enfermedadesCronicas!, cirugias: cirugias!, antecedentesGinecoobstetricos: antecedentesGinecoobstetricos!, ...(historialTemporal?.length ? { historialTemporal } : {}) };
+  return { nombre, fechaNacimiento, sexo, pesoKg, tallaCm, alergias: alergias!, medicamentosActuales: medicamentosActuales!, enfermedadesCronicas: enfermedadesCronicas!, antecedentesNoPatologicos, toxicomanias, cirugias: cirugias!, antecedentesGinecoobstetricos: antecedentesGinecoobstetricos!, ...(historialTemporal?.length ? { historialTemporal } : {}) };
 }

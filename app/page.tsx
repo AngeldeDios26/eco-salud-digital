@@ -1,121 +1,260 @@
+"use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { BrandLogo } from "../components/BrandLogo";
+import {
+  readProfessionalProfile,
+  saveProfessionalProfile,
+} from "../lib/professional-profile";
+
+const inputClass =
+  "mt-1 w-full rounded-xl border border-[#D6E6E1] bg-white px-3.5 py-2.5 text-sm text-[#0F2D3D] outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15";
 
 export default function Home() {
+  const router = useRouter();
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("medico@imss.gob.mx");
+  const [password, setPassword] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [cedula, setCedula] = useState("");
+  const [matricula, setMatricula] = useState("");
+  const [unidad, setUnidad] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      const saved = readProfessionalProfile();
+      if (saved) {
+        if (saved.nombre) setNombre(saved.nombre);
+        if (saved.cedula) setCedula(saved.cedula);
+        if (saved.matricula) setMatricula(saved.matricula);
+        if (saved.unidad) setUnidad(saved.unidad);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setError("Ingresa tu correo electrónico o matrícula y tu contraseña.");
+      return;
+    }
+    setError("");
+    try {
+      window.localStorage.setItem("esd_auth_session", "active");
+    } catch {
+      // Ignorar
+    }
+    router.push("/profesionales/consulta/hoja-clinica");
+  };
+
+  const handleRegister = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!nombre.trim() || !cedula.trim() || !email.trim() || !password.trim()) {
+      setError("Completa nombre, cédula, correo y contraseña para registrarte.");
+      return;
+    }
+    setError("");
+    const existing = readProfessionalProfile();
+    saveProfessionalProfile({
+      nombre: nombre.trim(),
+      cedula: cedula.trim(),
+      matricula: matricula.trim(),
+      unidad: unidad.trim(),
+      exploracionPersonalizada: existing?.exploracionPersonalizada ?? "",
+      pacientePlantilla: existing?.pacientePlantilla ?? "",
+      padecimientoPlantilla: existing?.padecimientoPlantilla ?? "",
+      ginecoPlantilla: existing?.ginecoPlantilla ?? "",
+    });
+    try {
+      window.localStorage.setItem("esd_auth_session", "active");
+      window.localStorage.setItem(
+        "esd_registered_doctor_profile",
+        JSON.stringify({
+          nombre: nombre.trim(),
+          cedula: cedula.trim(),
+          matricula: matricula.trim(),
+          unidad: unidad.trim(),
+        }),
+      );
+    } catch {
+      // Ignorar
+    }
+    router.push("/profesionales/consulta/hoja-clinica");
+  };
+
   return (
-    <main className="min-h-screen text-[#0F2D3D]">
-      <header className="sticky top-0 z-10 border-b border-[#D6E6E1] bg-white">
-  <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+    <main className="flex min-h-dvh items-center justify-center px-4 py-8 text-[#0F2D3D]">
+      <div className="w-full max-w-md rounded-2xl border border-[#D6E6E1] bg-white/95 p-6 shadow-xl backdrop-blur sm:p-7">
+        <div className="flex items-center gap-3 border-b border-[#EAF4F1] pb-4">
+          <BrandLogo size="lg" />
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight text-[#0F2D3D]">
+              ECO <span className="text-[#0D9488]">SALUD DIGITAL</span>
+            </h1>
+            <p className="text-xs font-medium text-slate-500">
+              Acceso para Profesionales · Hoja de Consulta
+            </p>
+          </div>
+        </div>
 
-    <a href="#inicio" className="flex items-center gap-3">
-      <BrandLogo size="lg" />
-      <div>
-        <p className="text-lg font-extrabold tracking-wide">
-          ECO <span className="text-[#0D9488]">SALUD DIGITAL</span>
-        </p>
-        <p className="text-xs text-slate-500">
-          Consulta Ágil · Medicina Familiar
-        </p>
-      </div>
-    </a>
-
-    <nav className="flex flex-wrap items-center gap-5 text-sm font-semibold">
-      <a href="#inicio" className="hover:text-[#0D9488]">Inicio</a>
-      <a href="#soluciones" className="hover:text-[#0D9488]">Soluciones</a>
-      <a href="#vision" className="hover:text-[#0D9488]">Nuestra visión</a>
-    </nav>
-
-    <a href="#acceso" className="rounded-xl bg-[#EAF4F1] px-5 py-3 text-sm font-bold text-[#0F766E] transition hover:bg-[#D8EEEA]">
-      Probar el prototipo
-    </a>
-
-  </div>
-</header>
-      <section id="inicio" className="mx-auto max-w-7xl px-6 py-20 md:py-28">
-        <div className="max-w-3xl">
-          <p className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-[#0D9488]">
-            Ecosistema digital de salud
-          </p>
-
-          <h1 className="text-4xl font-extrabold leading-tight md:text-6xl">
-            La tecnología al servicio de quienes cuidan la salud.
-          </h1>
-
-          <p className="mt-7 max-w-2xl text-lg leading-relaxed text-slate-600">
-            Conectamos a profesionales, pacientes e instituciones
-            mediante herramientas digitales accesibles, prácticas
-            y confiables.
-          </p>
-
-          <a
-            href="/profesionales/consulta/hoja-clinica"
-            className="mt-9 inline-block rounded-xl bg-[#0F2D3D] px-7 py-4 font-semibold text-white transition hover:bg-[#20566A]"
+        <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-[#EAF4F1] p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setTab("login");
+              setError("");
+            }}
+            className={
+              "rounded-lg py-2 text-xs font-extrabold transition " +
+              (tab === "login"
+                ? "bg-[#0F2D3D] text-white shadow-sm"
+                : "text-[#0F2D3D] hover:bg-white/60")
+            }
           >
-            Iniciar consulta →
-          </a>
+            Iniciar Sesión
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab("register");
+              setError("");
+            }}
+            className={
+              "rounded-lg py-2 text-xs font-extrabold transition " +
+              (tab === "register"
+                ? "bg-[#0D9488] text-white shadow-sm"
+                : "text-[#0F2D3D] hover:bg-white/60")
+            }
+          >
+            Registrarse
+          </button>
         </div>
-      </section>
-      <section id="acceso" className="mx-auto max-w-7xl px-6 py-12">
-        <div id="soluciones" className="mb-8">
-          <p className="text-sm font-bold uppercase tracking-widest text-[#0D9488]">
-            Acceso rápido
+
+        {error && (
+          <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+            {error}
           </p>
-          <h2 className="mt-2 text-2xl font-extrabold">¿Qué deseas hacer?</h2>
+        )}
+
+        {tab === "login" ? (
+          <form onSubmit={handleLogin} className="mt-4 space-y-3.5">
+            <label className="block text-xs font-semibold">
+              Correo electrónico o Matrícula
+              <input
+                type="text"
+                className={inputClass}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="medico@imss.gob.mx"
+                required
+              />
+            </label>
+            <label className="block text-xs font-semibold">
+              Contraseña
+              <input
+                type="password"
+                className={inputClass}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-[#0F2D3D] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0D9488]"
+            >
+              Entrar a Hoja de Consulta →
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleRegister} className="mt-4 space-y-3">
+            <label className="block text-xs font-semibold">
+              Nombre completo del médico
+              <input
+                type="text"
+                className={inputClass}
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Dr. / Dra. ..."
+                required
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              <label className="block text-xs font-semibold">
+                Cédula profesional
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="block text-xs font-semibold">
+                Matrícula (opcional)
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={matricula}
+                  onChange={(e) => setMatricula(e.target.value)}
+                />
+              </label>
+            </div>
+            <label className="block text-xs font-semibold">
+              Unidad médica / Consultorio
+              <input
+                type="text"
+                className={inputClass}
+                value={unidad}
+                onChange={(e) => setUnidad(e.target.value)}
+                placeholder="Ej. UMF No. 1 / Consultorio privado"
+              />
+            </label>
+            <label className="block text-xs font-semibold">
+              Correo electrónico
+              <input
+                type="email"
+                className={inputClass}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </label>
+            <label className="block text-xs font-semibold">
+              Crear contraseña
+              <input
+                type="password"
+                className={inputClass}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-[#0D9488] py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0F2D3D]"
+            >
+              Registrarme y Entrar →
+            </button>
+          </form>
+        )}
+
+        <div className="mt-5 border-t border-[#EAF4F1] pt-3 text-center text-xs text-slate-500">
+          ¿Eres paciente?{" "}
+          <Link href="/pacientes" className="font-bold text-[#0D9488] hover:underline">
+            Ir a la App de Pacientes →
+          </Link>
         </div>
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <a href="/profesionales/consulta/hoja-clinica" className="rounded-2xl border border-[#B9DED8] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0D9488]">⚕</span>
-            <h3 className="mt-4 text-xl font-bold">Iniciar consulta</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Abre la hoja clínica y captura una consulta en modo demostración.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0F766E]">Iniciar →</span>
-          </a>
-
-          <a href="/profesionales" className="rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0D9488]">▦</span>
-            <h3 className="mt-4 text-xl font-bold">Herramientas</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Consulta los módulos disponibles y los que siguen en desarrollo.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0F766E]">Ver herramientas →</span>
-          </a>
-
-          <a href="/profesionales/consulta/receta" className="rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0D9488]">▤</span>
-            <h3 className="mt-4 text-xl font-bold">Receta médica</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Genera recetas genéricas con el buscador exclusivo del Cuadro Básico IMSS.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0F766E]">Abrir receta →</span>
-          </a>
-
-          <a href="/profesionales/perfil" className="rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0D9488]">♙</span>
-            <h3 className="mt-4 text-xl font-bold">Mi perfil</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Configura tus datos y tu formato propio de exploración física.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0F766E]">Editar perfil →</span>
-          </a>
-
-          <a href="/profesionales/biblioteca" className="rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0D9488]">▥</span>
-            <h3 className="mt-4 text-xl font-bold">Mi Biblioteca</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Encuentra enlaces a guías de práctica clínica y normas oficiales.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0F766E]">Abrir biblioteca →</span>
-          </a>
-
-          <a href="/pacientes" className="rounded-2xl border border-[#D6E6E1] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-            <span className="text-3xl text-[#0284C7]">⌖</span>
-            <h3 className="mt-4 text-xl font-bold">Portal de pacientes</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Genera un código QR temporal para compartir datos previos a la consulta.</p>
-            <span className="mt-5 inline-block text-sm font-bold text-[#0284C7]">Abrir portal →</span>
-          </a>
-        </div>
-      </section>
-
-      <section id="vision" className="mx-auto max-w-7xl px-6 pb-12">
-        <p className="text-sm text-slate-500">Prototipo tecnológico en desarrollo.</p>
-      </section>
-
-      <footer className="border-t border-[#D6E6E1] bg-white px-6 py-8 text-center text-sm text-slate-500">
-        © 2026 ECO SALUD DIGITAL.
-        Consulta Ágil · Medicina Familiar.
-      </footer>
+      </div>
     </main>
   );
 }
